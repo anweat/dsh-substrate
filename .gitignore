@@ -1,0 +1,5 @@
+node_modules/
+STATUS.json
+e2e/workspace/
+pipeline/out/
+out-baseline.json

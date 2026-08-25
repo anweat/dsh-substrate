@@ -1,0 +1,17 @@
+{
+  "name": "dsh-substrate",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "A conflict-resolution substrate for the DeepSeek Harness plugin ecosystem, with the measurements it is built on.",
+  "engines": { "node": ">=22.19" },
+  "scripts": {
+    "test": "node substrate/run-tests.mjs",
+    "baseline": "node pipeline/00-baseline.mjs",
+    "e2e": "node e2e/run.mjs"
+  },
+  "dependencies": {
+    "js-yaml": "^4.1.0",
+    "typescript": "^5.9.2"
+  }
+}
