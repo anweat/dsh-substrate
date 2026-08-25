@@ -1,17 +1,19 @@
 # 实验工作流
 
-冷启动读这一份就够。**不要重新推导机制**——结论在 `D:\codeproject\dsh-plugin\docs\插件冲突底座-机制调研.md`,证据已公开在 https://github.com/anweat/dsh-ecosystem-conflicts
+冷启动读这一份就够。**不要重新推导机制** —— 结论都在下面的进度表里,公开的测量在 https://github.com/anweat/dsh-ecosystem-conflicts
 
 ## 环境
 
+这些实验对着一个真实的 harness checkout 跑,路径从环境变量解析(见仓库根的 `paths.mjs` 与 `.env.example`):
+
 ```
-本仓库    D:\codeproject\dsh-lab            dsh 独立克隆(分支 codex/dsh-0.1.1-rc.2-adaptation)
-上游对照  D:\codeproject\deepseek-harness   用户的工作仓库,不要改
-设计文档  D:\codeproject\dsh-plugin\docs\插件冲突底座-机制调研.md
-生态管线  <scratchpad>/dsh-eco             采集/分析/报告(9,873 个真插件的数据)
+DSH_ROOT   一个 dsh 克隆。本轮实验用的是分支 codex/dsh-0.1.1-rc.2-adaptation
+           的 commit 50854a854f;换 commit 前先看结论是否仍然成立
+DSH_ECO    扫描器工作根,默认 ../pipeline。out/records.jsonl 是逐仓库的原始
+           提取,不随仓库发布;pipeline/ 可从公开来源重建它
 ```
 
-依赖已装(pnpm 11.7.0)。实验用 `node --import tsx/esm` 直接跑 TS 源码,不需要 build。
+checkout 里装好依赖后,实验用 `node --import tsx/esm` 直接跑 TS 源码,不需要 build。
 
 ## 常用命令
 
@@ -36,7 +38,7 @@ node run-experiments.mjs --list    # 看注册表 + 上次结果,不执行
 
 ### P1 裁决层(L2)—— 完成
 
-代码在 `D:\codeproject\dsh-plugin\plugins\dsh-conflict-substrate\`,测试用 `node run-tests.mjs`。
+代码在 `substrate/`,测试用 `npm test`。
 
 关键结果(`bin/baseline.mjs`,语料 9,617 条记录 / 8,540 去重包名 / 52,301 贡献):
 
@@ -88,7 +90,7 @@ node run-experiments.mjs --list    # 看注册表 + 上次结果,不执行
 |---|---|---|
 | `lab-client-priority` | 12 | **原型两文件 37 行**:`BootPluginRow.priority` + `SlotRegistry.seedPriorities`。争用座位由"撤下整个插件前端半"变为普通遮蔽;落败者其它条目照常渲染;显式 priority 压过清单默认;未 seed 时行为逐字节不变 |
 
-`bin/whatif-client-priority.mjs` 在全语料上量化:降级 **804 → 1**(803 包,9.4%),共存 **90.6% → 100.0%**。剩下 1 例是保留名,任何 rank 都救不了。已发 Discussion #4253。
+`substrate/bin/whatif-client-priority.mjs` 在全语料上量化:降级 **804 → 1**(803 包,9.4%),共存 **90.6% → 100.0%**。剩下 1 例是保留名,任何 rank 都救不了。已发 Discussion #4253。
 
 - [ ] E1 代价量化 —— E3 的 803 已回答同一问题,价值低
 - [ ] E2 A/B 启动成功率 —— 规模测试的零抛错已覆盖大半
@@ -97,7 +99,7 @@ node run-experiments.mjs --list    # 看注册表 + 上次结果,不执行
 
 外壳把令牌定义在 `body` 与 `body[data-ds-dark-theme]` 上,插件 CSS **环境继承**整套词表。所以令牌可用但未发布:没有导出面告诉作者有哪些名字、哪些会随主题翻转、哪些引用已经失效。
 
-实现在 `dsh-plugin/plugins/dsh-conflict-substrate/src/tokens.mjs`,49 条断言。
+实现在 `substrate/src/tokens.mjs`,49 条断言。
 
 | | |
 |---|---|
@@ -116,7 +118,7 @@ node bin/tokens.mjs lint <dsh-root> [scan-root]  # 对照检查,仅缺陷决定�
 
 ### P4.6 面板脚手架(L4)—— 完成
 
-面板(槽条目 + 喂它的后端)是生态最重复的形态,**2,155 个包两样都注册**,路径写三遍、无人校对。实现在 `src/panel.mjs`(44 断言)+ `lab-panel.ts`(11 断言,打真服务)。
+面板(槽条目 + 喂它的后端)是生态最重复的形态,**2,155 个包两样都注册**,路径写三遍、无人校对。实现在 `substrate/src/panel.mjs`(44 断言)+ `lab-panel.ts`(11 断言,打真服务)。
 
 两条实测的运行时事实定了它的形状:
 
@@ -133,7 +135,7 @@ mountPanelClient(scaffoldCtx, …)   registrant = the-scaffold   包裹式的失
 
 `channelFor('@scope/thing','main')` → `/scope-thing.main`。用 `.` 连接而非嵌套,因为真文法 `^\/[A-Za-z0-9._~-]+$` **只认一段**——这条是打真服务才发现的,我最初派生的 `/a-plugin/data` 被直接拒绝。
 
-`bin/whatif-panel-channels.mjs` 在 503 仓库路由样本上量化:争用路径 **49 → 0**,牵涉的 32 个包全部无需让位。争用方是同源分叉(`/sidebar/*` 四个包、`/dsh-market/*` 四个包),但分叉改了包名,所以按包名派生确实能分开;分开后两者共存,而今天同装是启动失败。
+`substrate/bin/whatif-panel-channels.mjs` 在 503 仓库路由样本上量化:争用路径 **49 → 0**,牵涉的 32 个包全部无需让位。争用方是同源分叉(`/sidebar/*` 四个包、`/dsh-market/*` 四个包),但分叉改了包名,所以按包名派生确实能分开;分开后两者共存,而今天同装是启动失败。
 
 脚手架**不掩盖真冲突**:同一个包挂两次仍然抛错,handler 与声明不符在挂载期就失败。
 
