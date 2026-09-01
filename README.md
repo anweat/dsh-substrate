@@ -24,6 +24,12 @@ booted for real, 2,768 packages · 11,911 tool registrations
   with the substrate             boots · 0 duplicate names · 648 scopes
 ```
 
+## 这个仓库的目标是变得不必要
+
+DSH 还没有正式版本。它今天缺的东西——客户端槽位的 rank、令牌的导出面、名册变更的转发——都是官方迟早会自己补上的,每补上一样这里就该少一块。衡量标准不是功能多完整,而是**还剩多少没被上游吸收**。全部落地时,这里应该只剩测量管线。
+
+跟随正式版本,不跟 alpha。当前基线 `dsh-v0.1.1-rc.2-5-g50854a854f`。每次版本更新怎么重新验证、断言失败该读作"上游改了实现"还是"上游吸收了缺口",见 [ADAPTATION.md](ADAPTATION.md)。
+
 ## Layout
 
 | | |
@@ -33,6 +39,7 @@ booted for real, 2,768 packages · 11,911 tool registrations
 | `experiments/` | mechanism experiments against a real harness checkout (160 assertions) |
 | `e2e/` | the whole thing booted: corpus packages on a real shipped profile |
 | `docs/` | design notes and Discussion drafts |
+| [`ADAPTATION.md`](ADAPTATION.md) | 跟哪个版本、每次更新怎么重验、什么时候该删代码而不是修测试 |
 
 ```bash
 npm install

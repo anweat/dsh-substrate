@@ -13,7 +13,7 @@
  *   node run-experiments.mjs --list       show the registry and last results
  */
 import { readdirSync, writeFileSync, readFileSync, existsSync } from 'node:fs'
-import { spawnSync } from 'node:child_process'
+import { execFileSync, spawnSync } from 'node:child_process'
 import { dirname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 
@@ -40,6 +40,34 @@ const REGISTRY = [
 const args = process.argv.slice(2)
 const filter = args.find(a => !a.startsWith('--'))
 
+/**
+ * Which checkout this run actually judged.
+ *
+ * A green run means nothing without it: these assertions pin a moving product,
+ * and "the experiments pass" is only a claim about the commit they ran against.
+ */
+function checkoutUnderTest() {
+  const root = process.env.DSH_ROOT
+  if (root === undefined || root === '') return { error: 'DSH_ROOT not set' }
+  const git = args => execFileSync('git', ['-C', root, ...args], { encoding: 'utf8' }).trim()
+  try {
+    return {
+      commit: git(['rev-parse', 'HEAD']),
+      describe: git(['describe', '--tags', 'HEAD']),
+      version: JSON.parse(readFileSync(join(root, 'package.json'), 'utf8')).version,
+      dirty: git(['status', '--porcelain']) !== '',
+    }
+  } catch (error) {
+    return { error: String(error?.message ?? error).split('\n')[0] }
+  }
+}
+
+const checkout = checkoutUnderTest()
+if (checkout.describe !== undefined) {
+  console.log(`\n对照 ${checkout.version} · ${checkout.describe}${checkout.dirty ? ' · 工作区有未提交改动' : ''}`)
+} else {
+  console.log(`\n未能识别被测 checkout: ${checkout.error}`)
+}
 if (args.includes('--list')) {
   const prev = existsSync(STATUS) ? JSON.parse(readFileSync(STATUS, 'utf8')) : { results: [] }
   const byFile = new Map((prev.results ?? []).map(r => [r.file, r]))
@@ -87,6 +115,6 @@ for (const e of targets) {
 
 const totalPassed = results.reduce((a, r) => a + r.passed, 0)
 const totalFailed = results.reduce((a, r) => a + r.failed, 0)
-writeFileSync(STATUS, JSON.stringify({ ranAt: new Date().toISOString(), results }, null, 2))
+writeFileSync(STATUS, JSON.stringify({ ranAt: new Date().toISOString(), checkout, results }, null, 2))
 console.log(`\n合计 ${totalPassed} 通过, ${totalFailed} 失败  ->  STATUS.json`)
 process.exit(totalFailed === 0 && results.every(r => r.ok) ? 0 : 1)
