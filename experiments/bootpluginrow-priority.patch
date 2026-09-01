@@ -1,0 +1,91 @@
+diff --git a/packages/client/modules/src/client/manifest.ts b/packages/client/modules/src/client/manifest.ts
+index cee6679be4..40b685e765 100644
+--- a/packages/client/modules/src/client/manifest.ts
++++ b/packages/client/modules/src/client/manifest.ts
+@@ -59,6 +59,8 @@ export interface WebBootEntry {
+   inject?: string[]
+   /** Stage-one prefetch mark: load the script for factory registration during module-face boot. */
+   immediately?: boolean
++  /** Default slot-shadowing rank for this plugin's registrations; see {@link BootPluginRow.priority}. */
++  priority?: number
+   /** Non-baseline module specifiers this row requests; omitted when it requests none. */
+   external?: string[]
+ }
+@@ -95,6 +97,14 @@ export interface BootPluginRow {
+   inject: string[]
+   /** Stage-one prefetch tier (false when the wire omits it). */
+   immediately: boolean
++  /**
++   * Default slot-shadowing rank for entries this plugin registers, when the
++   * registration does not set one itself. Ascending, lowest renders — the same
++   * order the slot registry already applies. Absent when the wire omits it,
++   * which leaves every registration at its own default and behaves exactly as
++   * before.
++   */
++  priority?: number
+ }
+ 
+ /** The parsed boot manifest: one wire, two consumer views. */
+@@ -172,6 +182,9 @@ export function parseBootManifest(wire: unknown): BootManifest {
+     if (row.immediately !== undefined && typeof row.immediately !== 'boolean') {
+       throw new Error(`client-modules: boot manifest entry ${where} immediately must be a boolean`)
+     }
++    if (row.priority !== undefined && !Number.isFinite(row.priority)) {
++      throw new Error(`client-modules: boot manifest entry ${where} priority must be a finite number`)
++    }
+     modules.push({
+       id: row.id,
+       url: row.url,
+@@ -182,6 +195,7 @@ export function parseBootManifest(wire: unknown): BootManifest {
+       id: row.id,
+       inject: inject === undefined ? [] : [...inject],
+       immediately: row.immediately === true,
++      ...(typeof row.priority === 'number' ? { priority: row.priority } : {}),
+     })
+   }
+   return { rev: graph.rev, modules, plugins }
+diff --git a/packages/client/runtime/src/client/slots.ts b/packages/client/runtime/src/client/slots.ts
+index 1ff51b9c58..41baa6f5a8 100644
+--- a/packages/client/runtime/src/client/slots.ts
++++ b/packages/client/runtime/src/client/slots.ts
+@@ -92,6 +92,25 @@ type SlotInjectionEffect = (() => void) | Iterable<() => void, void, void>
+ /** cordis Service layer of the slot system; see the module doc for the split with SlotCore. */
+ export class SlotRegistry extends Service {
+   private readonly _core = new SlotCore()
++
++  /**
++   * Default shadowing rank per registrant, seeded from the boot manifest.
++   *
++   * The slot registry already ranks entries — lowest renders, and two entries
++   * at one rank throw. What it has no way to know is which PLUGIN a rank
++   * belongs to, because `BootPluginRow` carries no priority: a composition can
++   * therefore only resolve a contended seat by withholding a whole plugin.
++   * Seeding a per-registrant default turns that into an ordinary shadow.
++   */
++  private readonly _defaultPriority = new Map<string, number>()
++
++  /**
++   * Seed the per-plugin defaults the boot manifest declared.
++   * @param priorities - registrant (plugin id) → rank; later calls replace.
++   */
++  seedPriorities(priorities: Iterable<readonly [string, number]>): void {
++    for (const [registrant, priority] of priorities) this._defaultPriority.set(registrant, priority)
++  }
+   /** Store-instance axis: handle -> mounted scope, refcount, resolved instances. */
+   private readonly _stores = new Map<EngineStoreHandle, StoreAxisRecord>()
+   private _renderer: SlotRenderer | undefined
+@@ -359,10 +378,14 @@ export class SlotRegistry extends Service {
+     // core's shared-handle scope pinning applies to it harmlessly).
+     const store = typeof options.store === 'function' ? options.store() : options.store
+     const registrant = options.registrant ?? (this.ctx.fiber as { name?: string } | undefined)?.name
++    // An explicit priority always wins: the manifest default exists for the
++    // plugins that never thought about ranking, which is nearly all of them.
++    const seeded = registrant === undefined ? undefined : this._defaultPriority.get(registrant)
+     const erased: ErasedRegisterOptions = {
+       ...options,
+       ...(store !== undefined ? { store } : {}),
+       ...(registrant !== undefined ? { registrant } : {}),
++      ...(options.priority === undefined && seeded !== undefined ? { priority: seeded } : {}),
+     }
+     // Core write first: all load-time validation (undeclared target,
+     // duplicate declaration, kind conflicts, cross-scope handle) throws

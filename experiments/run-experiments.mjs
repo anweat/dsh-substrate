@@ -12,10 +12,11 @@
  *   node run-experiments.mjs isolate      run those whose name matches
  *   node run-experiments.mjs --list       show the registry and last results
  */
-import { readdirSync, writeFileSync, readFileSync, existsSync } from 'node:fs'
+import { readdirSync, writeFileSync, readFileSync, existsSync, copyFileSync, rmSync } from 'node:fs'
 import { execFileSync, spawnSync } from 'node:child_process'
 import { dirname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
+import { DSH_ROOT, ECO, require_ } from '../paths.mjs'
 
 const here = dirname(fileURLToPath(import.meta.url))
 const STATUS = join(here, 'STATUS.json')
@@ -32,7 +33,7 @@ const REGISTRY = [
   { file: 'lab-gatekeeper-plugin.ts', asks: '守门员插件在真启动里 veto/report/clean 三态是否正确', phase: 'P3' },
   { file: 'lab-preset-host.ts', asks: '预设宿主经 standingKeyFor 建链后 agent 是否解析到裁决赢家', phase: 'P3' },
   { file: 'lab-scale.ts', asks: '全语料 896 包同链、7164 工具真注册是否成立;开销多少', phase: 'P4' },
-  { file: 'lab-client-priority.ts', asks: 'BootPluginRow 带 priority 后,前端争用能否从整包禁用变成槽位让位', phase: 'P3.5' },
+  { file: 'lab-client-priority.ts', asks: 'BootPluginRow 带 priority 后,前端争用能否从整包禁用变成槽位让位', phase: 'P3.5', needsPatch: 'bootpluginrow-priority.patch' },
   { file: 'lab-panel.ts', asks: '面板脚手架在真 SlotRegistry/WebServer/connection 上:身份是否跟随调用方 ctx、派生通道能否让同名面板共存', phase: 'L4' },
   { file: 'lab-no-restart.ts', asks: '改补丁层要不要重启、爆炸半径多大、浏览器那一侧收不收得到名册变更', phase: 'P3.6' },
 ]
@@ -87,16 +88,70 @@ if (args.includes('--list')) {
   process.exit(0)
 }
 
-const targets = REGISTRY.filter(e => filter === undefined || e.file.includes(filter))
+const targets = [...REGISTRY].filter(e => filter === undefined || e.file.includes(filter))
 if (targets.length === 0) {
   console.error(`没有匹配 "${filter}" 的实验;用 --list 看注册表`)
   process.exit(1)
 }
 
+/**
+ * Experiments run from inside the checkout, not from here.
+ *
+ * They import the product by relative path (`./vendor/cordis/src/index.ts`,
+ * `./packages/...`), which is what lets them exercise the real thing rather
+ * than a published build. That only resolves at the checkout root, so each
+ * file is staged there for the run and removed afterwards. Staging beats
+ * rewriting the imports: a path that resolves from two places is a path that
+ * can silently resolve to the wrong one.
+ */
+const root = require_(DSH_ROOT, 'DSH_ROOT', 'run experiments against a real harness')
+
+/**
+ * One experiment measures a proposed upstream change, so it only means
+ * anything on a checkout carrying that change. Detecting this beats letting it
+ * fail: a red line reads as "the mechanism broke", when the real answer is
+ * "this checkout does not have the prototype applied".
+ */
+function patchApplied(name) {
+  const patch = readFileSync(join(here, name), 'utf8')
+  // Every added line the patch introduces must already be in the checkout.
+  const added = patch.split('\n').filter(l => l.startsWith('+') && !l.startsWith('+++')).map(l => l.slice(1).trim())
+  const files = [...patch.matchAll(/^\+\+\+ b\/(.+)$/gm)].map(m => m[1])
+  const text = files.map(f => (existsSync(join(root, f)) ? readFileSync(join(root, f), 'utf8') : '')).join('\n')
+  return added.every(line => line === '' || text.includes(line))
+}
+
+const skipped = []
+for (const e of [...targets]) {
+  if (e.needsPatch === undefined) continue
+  if (patchApplied(e.needsPatch)) continue
+  targets.splice(targets.indexOf(e), 1)
+  skipped.push(e)
+}
+for (const e of skipped) {
+  console.log(`跳过 ${e.file} —— 它测的是一个上游提案,需要先应用 experiments/${e.needsPatch}`)
+}
+
+const staged = []
+for (const e of targets) {
+  const target = join(root, e.file)
+  if (existsSync(target)) {
+    console.error(`拒绝覆盖 checkout 里已有的 ${e.file};先清理它`)
+    process.exit(1)
+  }
+  copyFileSync(join(here, e.file), target)
+  staged.push(target)
+}
+const cleanup = () => { for (const f of staged) { try { rmSync(f) } catch { /* already gone */ } } }
+process.on('exit', cleanup)
+
 const results = []
 for (const e of targets) {
   const run = spawnSync(process.execPath, ['--import', 'tsx/esm', e.file], {
-    cwd: here, encoding: 'utf8', timeout: 180000,
+    cwd: root, encoding: 'utf8', timeout: 180000,
+    // Both absolute: the experiment runs with the checkout as its cwd, so a
+    // relative default here would resolve beside the product instead of here.
+    env: { ...process.env, DSH_SUBSTRATE: join(here, '..', 'substrate', 'src'), DSH_ECO: ECO },
   })
   const out = `${run.stdout ?? ''}${run.stderr ?? ''}`
   const passed = (out.match(/^\s*PASS\s/gm) ?? []).length
@@ -115,6 +170,13 @@ for (const e of targets) {
 
 const totalPassed = results.reduce((a, r) => a + r.passed, 0)
 const totalFailed = results.reduce((a, r) => a + r.failed, 0)
-writeFileSync(STATUS, JSON.stringify({ ranAt: new Date().toISOString(), checkout, results }, null, 2))
-console.log(`\n合计 ${totalPassed} 通过, ${totalFailed} 失败  ->  STATUS.json`)
+// An experiment that dies before asserting anything reports zero of each, so
+// counting assertions alone prints "0 failed" underneath a visible FAIL row.
+const brokenRuns = results.filter(r => !r.ok && r.failed === 0)
+writeFileSync(STATUS, JSON.stringify(
+  { ranAt: new Date().toISOString(), checkout, skipped: skipped.map(e => e.file), results }, null, 2))
+console.log(`\n合计 ${totalPassed} 通过, ${totalFailed} 失败`
+  + (brokenRuns.length > 0 ? `,${brokenRuns.length} 个实验没跑起来(${brokenRuns.map(r => r.file).join(', ')})` : '')
+  + (skipped.length > 0 ? `,跳过 ${skipped.length}` : '')
+  + '  ->  STATUS.json')
 process.exit(totalFailed === 0 && results.every(r => r.ok) ? 0 : 1)

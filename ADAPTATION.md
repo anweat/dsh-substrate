@@ -56,6 +56,13 @@ npm test                                      # 251 断言,不依赖 checkout
 
 runner 会在开头打印它究竟对着哪个 checkout 跑,并写进 `STATUS.json`。**一次绿灯如果不知道对的是哪个 commit,就等于没跑。** 它也会提示 checkout 有未提交改动——那意味着结果不可复现。
 
+两个细节值得知道:
+
+- **实验是被暂存进 checkout 里跑的。** 它们按相对路径 import 产品(`./vendor/cordis/src/index.ts`),这正是它们碰的是真东西而不是构建产物的原因;而那只在 checkout 根解析得了。runner 拷进去、跑完删掉,并且拒绝覆盖同名文件。
+- **`lab-client-priority` 测的是一个上游提案**,只在应用了 `experiments/bootpluginrow-priority.patch` 的 checkout 上有意义。runner 会检测补丁在不在:不在就跳过并说明原因,而不是报一条红线——红线会被读成"机制坏了",而真相是"这个 checkout 没打那个原型"。
+
+当前基线上的结果:**148 通过、0 失败、跳过 1**(打上补丁后 12/12)。
+
 ### 用独立克隆
 
 不要拿你日常工作的 harness 仓库当 `DSH_ROOT`。这些实验会写临时 profile、启监听端口、按 commit 判定结论;一个会被随手 `git pull` 的仓库会让"上次跑过了"这句话失去意义。
