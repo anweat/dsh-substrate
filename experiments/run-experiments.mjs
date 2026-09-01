@@ -35,6 +35,7 @@ const REGISTRY = [
   { file: 'lab-scale.ts', asks: '全语料 896 包同链、7164 工具真注册是否成立;开销多少', phase: 'P4' },
   { file: 'lab-client-priority.ts', asks: 'BootPluginRow 带 priority 后,前端争用能否从整包禁用变成槽位让位', phase: 'P3.5', needsPatch: 'bootpluginrow-priority.patch' },
   { file: 'lab-panel.ts', asks: '面板脚手架在真 SlotRegistry/WebServer/connection 上:身份是否跟随调用方 ctx、派生通道能否让同名面板共存', phase: 'L4' },
+  { file: 'lab-duplicate-entry-id.ts', asks: '补丁层能否解决重复 entry id;disabled 与改 id 各自有没有用(源自 anweat/dsh-browser#11)', phase: 'L3' },
   { file: 'lab-no-restart.ts', asks: '改补丁层要不要重启、爆炸半径多大、浏览器那一侧收不收得到名册变更', phase: 'P3.6' },
 ]
 

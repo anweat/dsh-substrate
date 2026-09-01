@@ -1,0 +1,9 @@
+# The substrate mounts one row, and only one.
+#
+# It reports what it can see from inside a booted tree. It does not rewrite the
+# composition from here: the conflicts worth rewriting for are decided before
+# any plugin applies, so a row that tried would be arriving after the argument
+# was over. That work belongs to `dsh-substrate-check`, which runs first.
+- insert:
+    - id: substrate-report
+      name: '@anweat/dsh-substrate'

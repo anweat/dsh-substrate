@@ -27,6 +27,7 @@ const SUITES = [
   { file: 'test/emit-preset.spec.mjs', layer: 'L3', pins: '预设发射:一个预设一个 scope 故争用者不可同处、服务行必须套 isolate 组、YAML 渲染' },
   { file: 'test/predict.spec.mjs', layer: '守门员', pins: '从 entry list 预测:只有会抛错的类型算致命、归属是行不是模块、未知包如实报告' },
   { file: 'test/tokens.spec.mjs', layer: 'L4', pins: '设计令牌契约:层与暗色翻转、三条规则、只有 dangling 自证是缺陷、声明发射' },
+  { file: '../plugin/test/check.spec.mjs', layer: '插件', pins: '启动前检查:找出重复 entry id、被停的行仍算数、结论限定在自己看得见的范围' },
   { file: 'test/panel.spec.mjs', layer: 'L4', pins: '面板脚手架:路径从包名派生故不同包不撞、身份取自调用方 ctx、handler 与声明对齐、一个面板两笔贡献' },
 ]
 

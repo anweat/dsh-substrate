@@ -216,5 +216,31 @@ console.log('\n=== 与裁决层端到端 ===')
   check('胜者是声明顺序靠前的 pkg-b', decisions[0].winner === 'pkg-b', decisions[0].winner)
 }
 
+console.log('\n=== 两行同 id 时,改名不是补丁层能做的事 ===')
+{
+  // Prompted by a real report and settled in `lab-duplicate-entry-id.ts`:
+  // disabling a row does not remove it from the loader's id check, and a patch
+  // cannot rewrite an id. An emitter that emitted the re-home anyway would
+  // produce a patch that still fails to boot, which is worse than refusing.
+  const decisions = [{
+    kind: 'entry-id', target: 'browser', contested: true, remedy: 'rename',
+    actions: [{ owner: 'pkg-a', action: 'rename', from: 'browser', to: 'pkg_a__browser' }],
+  }]
+  const rows = new Map([['browser', { id: 'browser', name: './b.mjs', owner: 'pkg-a' }]])
+
+  const emitted = emitPatch({ decisions, rows, duplicateIds: new Set(['browser']) })
+  check('拒绝发射', emitted.summary.rehomed === 0, JSON.stringify(emitted.summary))
+  check('并说明原因', emitted.unresolved.some(u => u.why === 'id-claimed-by-several-rows'),
+    JSON.stringify(emitted.unresolved))
+  check('给出可行的方向', emitted.unresolved.some(u => typeof u.fix === 'string' && u.fix !== ''),
+    JSON.stringify(emitted.unresolved))
+  check('没有为它插行',
+    !JSON.stringify(emitted.patch).includes('pkg_a__browser'), JSON.stringify(emitted.patch))
+
+  // The single-claimant case is unaffected: that is what re-homing is for.
+  const single = emitPatch({ decisions, rows })
+  check('单行认领时照常改名', single.summary.rehomed === 1, JSON.stringify(single.summary))
+}
+
 console.log(`\n=== 结果: ${ok} 通过, ${fail} 失败 ===`)
 process.exit(fail === 0 ? 0 : 1)

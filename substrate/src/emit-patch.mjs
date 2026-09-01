@@ -36,6 +36,10 @@ export const SANDBOX_REALMS = Object.freeze(['webServer'])
 /**
  * @typedef {object} EmitInput
  * @property {readonly object[]} decisions - arbitration output.
+ * @property {ReadonlySet<string>} [duplicateIds] - ids more than one composed
+ *   row already claims. `rows` is keyed by id and so cannot represent them,
+ *   which is exactly the collision a `rename` is asked to fix; without this the
+ *   emitter cannot see the case it must refuse.
  * @property {ReadonlyMap<string, {id: string, name: string, config?: unknown}>} rows -
  *   the composed tree by entry id, as `ctx.loader.entries()` reports it.
  * @property {string} [groupId] - sandbox entry id.
@@ -57,7 +61,9 @@ export const SANDBOX_REALMS = Object.freeze(['webServer'])
  * @param input - decisions plus the composed rows they refer to.
  * @returns patch rows in application order, and what could not be emitted.
  */
-export function emitPatch({ decisions, rows, groupId = SANDBOX_ID, realms = SANDBOX_REALMS }) {
+export function emitPatch({
+  decisions, rows, groupId = SANDBOX_ID, realms = SANDBOX_REALMS, duplicateIds = new Set(),
+}) {
   const patch = []
   const unresolved = []
 
@@ -72,6 +78,23 @@ export function emitPatch({ decisions, rows, groupId = SANDBOX_ID, realms = SAND
         const row = rows.get(a.from)
         if (row === undefined) {
           unresolved.push({ action: a.action, id: a.from, why: 'row-not-in-composed-tree' })
+          continue
+        }
+        // Re-homing frees an id by switching one row off and inserting it
+        // elsewhere. That only removes a collision when a single row claims the
+        // id: `EntryGroup.update` rejects duplicates from the id list alone,
+        // before it reads `disabled`, and a patch cannot rewrite an entry's id
+        // (`applyEntryPatches` destructures `id` out and skips it). So when two
+        // rows already share the id, switching one off leaves the other still
+        // holding it and the tree still refuses to load. Measured in
+        // `lab-duplicate-entry-id.ts`.
+        if (duplicateIds.has(a.from)) {
+          unresolved.push({
+            action: a.action,
+            id: a.from,
+            why: 'id-claimed-by-several-rows',
+            fix: 'the patch layer cannot resolve this; the id must be unique before composition',
+          })
           continue
         }
         rehome.set(a.from, { row, newId: a.to })

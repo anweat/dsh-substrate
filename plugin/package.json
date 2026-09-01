@@ -1,0 +1,26 @@
+{
+  "name": "@anweat/dsh-substrate",
+  "version": "0.1.0",
+  "type": "module",
+  "description": "Reports and resolves DeepSeek Harness plugin conflicts. Says plainly which ones it cannot.",
+  "license": "MIT",
+  "engines": { "node": ">=22.19" },
+  "dsh": {
+    "bundle": { "patch": "./cordis.patch.yml" }
+  },
+  "exports": {
+    ".": "./src/index.mjs",
+    "./check": "./src/check.mjs",
+    "./package.json": "./package.json"
+  },
+  "bin": { "dsh-substrate-check": "./src/check.mjs" },
+  "files": ["src", "cordis.patch.yml", "CONTRACT.md"],
+  "peerDependencies": {
+    "@deepseek-ai/cordis": "*",
+    "@deepseek-ai/dsh-tools": "*",
+    "@deepseek-ai/dsh-scope": "*"
+  },
+  "peerDependenciesMeta": {
+    "@deepseek-ai/dsh-scope": { "optional": true }
+  }
+}
