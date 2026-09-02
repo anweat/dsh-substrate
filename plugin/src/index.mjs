@@ -1,5 +1,5 @@
 /**
- * The substrate plugin: reports the contention a booted tree can still see.
+ * The substrate plugin, host half.
  *
  * It deliberately does very little. Everything it could usefully *decide* is
  * decided before it exists — a duplicate entry id is rejected during
@@ -7,34 +7,34 @@
  * that would be promising something its position rules out. That belongs to
  * `dsh-substrate-check`, which runs before boot.
  *
- * What is still visible from here is tool-name contention, because tools
- * register while entries apply. Even that has a timing limit worth stating:
- * Cordis activates a plugin as soon as its injected services exist, which is
- * before the packages that register into them have run. So this reports at
- * `ready`, not during `apply`, and says so rather than reporting an empty
- * registry as a clean bill of health.
+ * What remains here is a setting and a report. The setting stages the loader
+ * patch into the profile; the report says what tool contention a booted tree
+ * can still see.
  *
  * @module @anweat/dsh-substrate
  */
 
+import z from '@deepseek-ai/schemastery'
+import { installSettingsSection } from '@deepseek-ai/dsh-settings'
 import { stage, unstage, isStaged } from './stage-patch.mjs'
 
 export const name = 'dsh-substrate'
 export const inject = ['tools']
 
+/** The settings-document section and the settings-card key are the same name. */
+export const SETTINGS_NAMESPACE = 'dsh-substrate'
+
 /**
- * Config. `applyLoaderPatch` is off by default and stays off until someone
- * turns it on: it writes into the profile's workspace, and a plugin that did
- * that on installation would be doing the thing the switch exists to make
- * visible.
+ * Config.
+ *
+ * `applyLoaderPatch` is off by default and stays off until someone turns it on:
+ * it writes into the profile's workspace, and a plugin that did that on
+ * installation would be doing the thing the switch exists to make visible.
  */
-export const Config = {
-  applyLoaderPatch: {
-    type: 'boolean',
-    default: false,
-    description: '把 loader 的 entry-id 去重补丁写进本 profile。写完需要跑一次安装才生效;关掉会原样撤回。',
-  },
-}
+export const Config = z.object({
+  applyLoaderPatch: z.boolean().default(false)
+    .description('把 loader 的 entry-id 去重补丁写进本 profile。写完需要跑一次安装才生效;关掉会原样撤回。'),
+})
 
 /**
  * Tool names that are reserved outright and cannot be layered or shadowed.
@@ -44,22 +44,27 @@ export const Config = {
 const RESERVED = Object.freeze(['run_code'])
 
 /**
- * Mount the reporter.
+ * Mount the setting and the reporter.
  *
  * @param {object} ctx Plugin context; needs `tools`.
- * @param {object} [config] `{ log }` — where the report goes; defaults to the context logger.
+ * @param {object} [config] Resolved config; `log`, `profileDir` and `settleMs` are test seams.
  * @returns {void}
  */
 export function apply(ctx, config = {}) {
   const log = config.log ?? (line => { ctx.logger?.info?.(line) ?? console.log(line) })
-
-  // Staging is a file write, so it happens on the setting rather than on a
-  // schedule, and it never runs the installer itself — that command is printed
-  // for a person to run after reading what was written.
   const profileDir = config.profileDir ?? ctx.get?.('dshHomePath')?.('profiles')
-  if (profileDir !== undefined) {
+
+  /**
+   * Bring the profile in line with the setting.
+   *
+   * Staging is a file write, so it follows the setting rather than a schedule,
+   * and it never runs the installer — that command is printed for a person to
+   * run after reading what was written.
+   */
+  const reconcile = (wanted) => {
+    if (profileDir === undefined) return
     try {
-      if (config.applyLoaderPatch === true) {
+      if (wanted === true) {
         const result = stage(profileDir)
         log(result.changed
           ? `dsh-substrate: 已写入 ${result.manifest} 与 ${result.patch};跑一次 \`${result.install}\` 后重启生效`
@@ -75,15 +80,26 @@ export function apply(ctx, config = {}) {
     }
   }
 
+  // With a settings service the switch lives in the settings document, so
+  // flipping it in the UI takes effect without a restart. Without one — a bare
+  // composition, or a test — the entry config is the only source there is, and
+  // `installSettingsSection` injects, so it simply never attaches.
+  let source = () => config
+  installSettingsSection(ctx, SETTINGS_NAMESPACE, Config, config, {
+    setSource: (current) => { source = current },
+    onChange: () => { reconcile(source()?.applyLoaderPatch === true) },
+  })
+  reconcile(source()?.applyLoaderPatch === true)
+
   // Not in the body of `apply`: at apply time the tool registry is typically
   // empty, because this plugin activates the moment `tools` exists and the
   // packages that fill it have not run yet. Reporting then would report nothing
   // and call it clean.
   //
-  // Cordis has no "the tree has settled" event, so this waits for `internal/status`
-  // to go quiet instead. That is a heuristic, not a guarantee: a fiber that
-  // activates after the quiet window is missed, and the report says how many
-  // entries it saw so a reader can tell when that has happened.
+  // Cordis has no "the tree has settled" event, so this waits for
+  // `internal/status` to go quiet instead. That is a heuristic, not a
+  // guarantee: a fiber that activates after the quiet window is missed, and the
+  // report says how many it saw so a reader can tell when that has happened.
   let settle
   let statusEvents = 0
   const report = () => {
@@ -101,8 +117,6 @@ export function apply(ctx, config = {}) {
     for (const n of RESERVED) {
       if (seen.has(n)) log(`  保留名 ${n} 已被占用 —— 它不接受任何分层`)
     }
-    // A registry that reached here at all means no duplicate threw, so the
-    // useful statement is about what this vantage point cannot see.
     log(`  基于 ${statusEvents} 次 fiber 状态变化后的静默窗口 —— 这是启发式,不是"全部就绪"的保证。`)
     log('  entry id / 路由 / 槽位的争用发生在本插件挂载之前,这里看不到;用 dsh-substrate-check 在启动前查。')
   }
