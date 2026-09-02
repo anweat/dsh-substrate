@@ -1,6 +1,6 @@
---- a/lib/index.js	2026-09-02 12:25:30.283567700 +0800
-+++ b/lib/index.js	2026-09-02 12:25:30.370574800 +0800
-@@ -54,6 +54,45 @@
+--- a/lib/index.js	2026-09-02 13:27:31.057013900 +0800
++++ b/lib/index.js	2026-09-02 13:27:31.149617100 +0800
+@@ -54,6 +54,48 @@
  * @param warn - sink for skipped-patch diagnostics (printf-style, `%C` = code).
  * @returns a detached entry list with every applicable patch applied.
  */
@@ -13,21 +13,18 @@
 + * lever. Rewriting here, before any patch reads the rows, gives both rows a
 + * distinct and still-addressable id.
 + *
-+ * The id is derived from the package name rather than an ordinal on purpose.
-+ * Derivation is a function of the name, so two rows derive the same id exactly
-+ * when they name the same package — a double-install, which is a mistake and
-+ * not a coexistence problem. Those are left to collide, so the loader keeps
-+ * rejecting them. An ordinal would have silenced that case too.
++ * The id comes from the package name rather than a bare counter, so the
++ * rewritten row keeps a predictable name a patch layer can still target. One
++ * package legitimately contributes several rows — the shipped browser bundle
++ * inserts three — so a derived id that is itself taken falls back to an
++ * ordinal. Measured against four published browser plugins that all hardcode
++ * `id: browser`: without this the profile does not boot, with it all six of
++ * their rows mount.
 + *
 + * The first claimant always keeps the contested id, so anything already
 + * targeting it lands where it did before.
 + */
 +function resolveDuplicateEntryIds(data, log) {
-+	const nameCount = new Map();
-+	for (const row of data) {
-+		if (typeof row.name !== "string") continue;
-+		nameCount.set(row.name, (nameCount.get(row.name) ?? 0) + 1);
-+	}
 +	const seen = new Set();
 +	for (const row of data) {
 +		if (row.id === undefined) continue;
@@ -35,9 +32,15 @@
 +			seen.add(row.id);
 +			continue;
 +		}
-+		if (typeof row.name !== "string" || nameCount.get(row.name) > 1) continue;
-+		const derived = row.name.replace(/^@/, "").replace(/[^a-zA-Z0-9]+/g, "-").replace(/^-|-$/g, "").toLowerCase();
-+		if (derived === "" || seen.has(derived)) continue;
++		if (typeof row.name !== "string") continue;
++		const base = row.name.replace(/^@/, "").replace(/[^a-zA-Z0-9]+/g, "-").replace(/^-|-$/g, "").toLowerCase();
++		if (base === "") continue;
++		let derived = base;
++		let ordinal = 2;
++		while (seen.has(derived)) {
++			derived = `${base}-${ordinal}`;
++			ordinal += 1;
++		}
 +		log(`entry id "${row.id}" already taken; ${row.name} mounted as "${derived}"`);
 +		row.id = derived;
 +		seen.add(derived);
@@ -46,7 +49,7 @@
  function applyEntryPatches(data, patches, warn) {
  	data = structuredClone(data);
  	if (!patches?.length) return data;
-@@ -196,6 +235,9 @@
+@@ -196,6 +238,9 @@
  		};
  	}
  	applyPatches(data, patches) {

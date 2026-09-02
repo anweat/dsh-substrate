@@ -64,7 +64,23 @@ entry id "browser" already taken; @anweat/dsh-browser mounted as "anweat-dsh-bro
 
 第一个认领者保住原 id,所以既有的定位不受影响;后来者拿到确定的、可被补丁定位的新 id。
 
-**同一个包被列两次时不改写**,让 loader 照常报错——那是配置错误,不是共存问题。派生是包名的函数,所以这一点是自然落下的,不需要额外判断。用序号后缀就会把这类真错误一起静音。
+派生 id 本身被占时(**一个包合法地贡献多行**——出厂 browser bundle 就插三行)退回序号。
+
+我最初的规则是"同一个 name 出现多次就不改写,让重复安装照常报错"。那条在真包上是错的:`dsh-builtin-browser` 一个包插 `browser`/`browser-electron`/`tool-browser` 三行,规则把它误判成重复安装、拒绝改写,**真启动里它就一直修不好**。是拿四个真包跑启动才发现的。
+
+## 真启动验证
+
+从 npm 装了四个真包(`@anweat/dsh-browser@0.1.10`、`dsh-builtin-browser@0.1.20`、`dsh-browser@0.1.0`、`dsh-plugin-browser@0.1.0`),用它们**各自真实的 `cordis.patch.yml`** 组合出 6 行,`browser` 被抢 4 次:
+
+```
+A. 无补丁   FAILED: duplicate loader entry id
+B. 有补丁   [dedup] browser -> dsh-builtin-browser
+            [dedup] browser -> dsh-browser
+            [dedup] browser -> dsh-plugin-browser
+            BOOTED — 挂载 6 行
+```
+
+插件本体用了替身(真本体要装浏览器),受测的是 loader 与注册表;**id 与包名都是它们自己的**。
 
 ## 它是临时的
 

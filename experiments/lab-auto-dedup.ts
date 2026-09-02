@@ -61,26 +61,23 @@ function installAutoDedup(): { restore: () => void, log: string[] } {
   }
   const original = target.applyPatches
   target.applyPatches = function deduped(data, patches) {
-    // Derivation is a function of the package name, so two rows derive the same
-    // id exactly when they name the same package. Those cannot be told apart by
-    // this rule, and they are a misconfiguration rather than a coexistence
-    // problem, so they are left to collide loudly.
-    const nameCount = new Map<string, number>()
-    for (const row of data) {
-      if (typeof row.name !== 'string') continue
-      nameCount.set(row.name, (nameCount.get(row.name) ?? 0) + 1)
-    }
-
     const seen = new Set<string>()
     for (const row of data) {
       if (row.id === undefined) continue
       if (!seen.has(row.id)) { seen.add(row.id); continue }
-      const derived = typeof row.name === 'string' ? idFromName(row.name) : ''
-      if (derived === '' || seen.has(derived)) continue
-      if ((nameCount.get(row.name as string) ?? 0) > 1) continue
-      log.push(`${row.id} -> ${derived}  (${String(row.name)})`)
-      row.id = derived
-      seen.add(derived)
+      const base = typeof row.name === 'string' ? idFromName(row.name) : ''
+      if (base === '') continue
+      // One package legitimately contributes several rows — the real
+      // `dsh-builtin-browser` inserts `browser`, `browser-electron` and
+      // `tool-browser` — so a derived id can itself already be taken. An
+      // earlier version treated a repeated name as a double-install and
+      // refused to rewrite, which left that package unfixable on a real boot.
+      let candidate = base
+      let ordinal = 2
+      while (seen.has(candidate)) { candidate = `${base}-${ordinal}`; ordinal += 1 }
+      log.push(`${row.id} -> ${candidate}  (${String(row.name)})`)
+      row.id = candidate
+      seen.add(candidate)
     }
     return original.call(this, data as never, patches as never)
   }
@@ -152,11 +149,11 @@ async function main(): Promise<void> {
     restore()
   }
 
-  console.log('\n=== 真正的配置错误仍然响亮 ===')
+  console.log('\n=== 一个包贡献多行时也要能修 ===')
   {
-    // The same package listed twice is a mistake, not a coexistence problem.
-    // Both rows derive the same name, so the collision survives — which is the
-    // reason to derive rather than append an ordinal.
+    // Measured against the real dsh-builtin-browser, which inserts three rows
+    // from one package. A rule that read "same name twice" as a double-install
+    // refused to rewrite here, and the real boot stayed broken.
     writeFileSync(join(dir, 'cordis.yml'), `
 - id: browser
   name: ./builtin.mjs
@@ -170,9 +167,9 @@ async function main(): Promise<void> {
 `)
     const { restore } = installAutoDedup()
     const result = await bootConfig(dir)
-    check('同一个包装两次照样抛错 —— 派生不会把真错误藏起来',
-      result.error !== undefined && /duplicate loader entry id/.test(result.error),
-      result.error ?? 'booted')
+    check('同一个包的两行都能拿到不同 id',
+      result.error === undefined && mounted().length === 2,
+      `${result.error ?? ''} ${JSON.stringify(mounted())}`)
     restore()
   }
 
