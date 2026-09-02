@@ -44,7 +44,30 @@ dsh-substrate: 15 个工具在全局命名空间,0 个重名
 
 15 与直接读注册表得到的出厂工具数一致。
 
-## 3. 机制断言
+## 3. 五个真实 browser 插件的实测
+
+从 npm 拉下五个已发布的包(`@anweat/dsh-browser@0.1.10`、`dsh-builtin-browser@0.1.20`、`dsh-browser-playwright@0.1.1`、`dsh-browser@0.1.0`、`dsh-plugin-browser@0.1.0`),读它们真实的 `cordis.patch.yml`:
+
+```
+五个包全部写死 id: browser        —— 组合后 9 行,重复 id: browser × 5
+```
+
+补丁施加后:
+
+```
+browser                          @anweat/dsh-browser        (第一个认领者保住)
+dsh-browser                      dsh-browser
+dsh-browser-playwright-service   dsh-browser-playwright/service
+dsh-builtin-browser-browser      dsh-builtin-browser/browser
+dsh-plugin-browser               dsh-plugin-browser
+… 另外 4 行本来就唯一
+
+还有重复吗:没有 —— 五个 browser 插件可以同装
+```
+
+**但这只过了第一关。** 同一批包里还有 **11 个工具名撞车**(`browser_click`/`browser_type`/`browser_screenshot` 各 4 家),那属于注册期,补丁不管。分层处理后 agent 看到 53 个工具(加前缀会是 72 个,多出 19 个近义工具)。
+
+## 4. 机制断言
 
 | | |
 |---|---|
@@ -55,7 +78,7 @@ dsh-substrate: 15 个工具在全局命名空间,0 个重名
 | [`lab-derived-entry-id.ts`](../experiments/lab-derived-entry-id.ts) | 13 —— 包名派生的 id 跨启动一致;派生必须早于 applyEntryPatches |
 | [`lab-id-injection.ts`](../experiments/lab-id-injection.ts) | 6 —— 内核那段检查可从外部替换且可逆;但插件不能是替换它的人 |
 
-## 4. 设置开关的三态
+## 5. 设置开关的三态
 
 ```
 ON    已写入 <profile>/pnpm-workspace.yaml 与 patches/...;跑一次安装后重启生效
