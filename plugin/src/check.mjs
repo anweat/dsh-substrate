@@ -45,6 +45,14 @@ function rowsOf(text) {
 const unquote = v => v.replace(/^['"]|['"]$/g, '')
 
 /**
+ * The loader package the published patch targets, pinned to the version it was
+ * generated against. pnpm refuses to apply a patch whose target moved, so the
+ * pin is what makes an upgrade fail loudly instead of silently doing nothing.
+ */
+const PATCH_TARGET = '@deepseek-ai/cordis-plugin-include@1.0.7'
+const PATCH_FILE = '@deepseek-ai__cordis-plugin-include@1.0.7.patch'
+
+/**
  * Find what will stop this composition from booting.
  *
  * @param {ReturnType<typeof rowsOf>} rows Composed rows.
@@ -102,6 +110,16 @@ export function render({ fatal, rows }) {
     for (const option of f.fix) lines.push(`      · ${option}`)
     lines.push('')
   }
+  // The one-command version of the advice above. Printed rather than applied:
+  // pnpm reads `patchedDependencies` only from the workspace manifest, never
+  // from a dependency, so adopting it is the root workspace's decision and this
+  // command has no business making it for anyone. Copy-paste is the right
+  // amount of friction — one step away, but a step somebody takes on purpose.
+  lines.push('  想让这类冲突整体消失,可以给 loader 打一份补丁(58 行,纯文本 diff)。')
+  lines.push('  在 <profile>/pnpm-workspace.yaml 里追加:\n')
+  lines.push('    patchedDependencies:')
+  lines.push(`      '${PATCH_TARGET}': patches/${PATCH_FILE}\n`)
+  lines.push('  补丁与说明:https://github.com/anweat/dsh-substrate/tree/master/patches\n')
   return lines.join('\n')
 }
 

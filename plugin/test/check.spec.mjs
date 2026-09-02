@@ -66,6 +66,20 @@ console.log('\n=== 报告本身 ===')
   check('说清后果是整个 profile 起不来', /起不来/.test(text))
 }
 
+console.log('\n=== 补丁只在有冲突时才提 ===')
+{
+  const dirty = render(inspect([row('a', 'x'), row('a', 'y')]))
+  check('有冲突时给出可粘贴的 pnpm-workspace.yaml 片段',
+    /patchedDependencies:/.test(dirty) && /cordis-plugin-include@/.test(dirty), dirty.slice(-240))
+  // pnpm 11 stopped reading the `pnpm` field in package.json; pointing someone
+  // at the old location produces a WARN and a setting that silently does nothing.
+  check('位置写的是 pnpm-workspace.yaml,不是 package.json',
+    /pnpm-workspace\.yaml/.test(dirty) && !/package\.json/.test(dirty))
+
+  const clean = render(inspect([row('a', 'x'), row('b', 'y')]))
+  check('没冲突时不推销补丁', !/patchedDependencies/.test(clean), clean.slice(0, 120))
+}
+
 console.log('\n=== 三行抢同一个 id ===')
 {
   const result = inspect([row('s', 'a'), row('s', 'b'), row('s', 'c')])

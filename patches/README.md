@@ -14,29 +14,45 @@
 `pnpm patch` 之所以干净,是因为它把改动摊开:
 
 - 产物是**一份 unified diff**,能在 PR 里逐行审、能 grep、没有任何动态代码
-- **`pnpm.patchedDependencies` 写在 `package.json` 里**,装了什么补丁一目了然
+- **声明写在工作区清单里**(`pnpm-workspace.yaml`),装了什么补丁一目了然,而且是根工作区的一次明确选择
 - **锁版本**。目标包版本一变,pnpm 会**报错拒绝**,而不是像猴子补丁那样悄悄不生效
 - **没有 postinstall,没有运行时注入** —— 扫描器真正会标记的那两样,一样都没有
 
 ## 用法
 
-```bash
-pnpm patch @deepseek-ai/cordis-plugin-include@1.0.7
-# pnpm 打开一个临时目录;把本目录的 .patch 应用进去,或直接改 lib/index.js
-pnpm patch-commit <pnpm 给出的临时目录>
+补丁写在 **profile 目录的 `pnpm-workspace.yaml`** 里 —— 不是 `package.json`。pnpm 11 起,`package.json` 里的 `pnpm` 字段**不再被读取**,它会打印一条 WARN 然后忽略你的设置:
+
+```
+[WARN] The "pnpm" field in package.json is no longer read by pnpm.
 ```
 
-或者手动在 `package.json` 里声明:
+正确的写法(实测于 pnpm 11.7.0,即 DSH 锁定的版本):
 
-```json
-{
-  "pnpm": {
-    "patchedDependencies": {
-      "@deepseek-ai/cordis-plugin-include@1.0.7": "patches/@deepseek-ai__cordis-plugin-include@1.0.7.patch"
-    }
-  }
-}
+```yaml
+# <profile>/pnpm-workspace.yaml —— 追加,不要覆盖已有内容
+patchedDependencies:
+  '@deepseek-ai/cordis-plugin-include@1.0.7': patches/@deepseek-ai__cordis-plugin-include@1.0.7.patch
 ```
+
+把 `.patch` 放到 `<profile>/patches/` 下,然后 `pnpm install`。
+
+DSH 自己也管理这个文件(它会写 `nodeLinker`、`autoInstallPeers`、`strictDepBuilds`),但它只替换这三行、其余内容原样保留,所以你加的这一段会活下来。
+
+## 为什么不能跟插件一起自动装上
+
+**pnpm 不读依赖包里的 `patchedDependencies`。** 这是实测的,不是推测:
+
+```
+声明在依赖的 package.json      未应用
+声明在根 package.json          未应用(pnpm 11 已废弃这个位置)
+声明在 pnpm-workspace.yaml     已应用 ✓
+```
+
+对照组用的是同一份补丁文件,所以差别来自位置,不是补丁本身。
+
+也就是说,**一个插件无法在安装时悄悄给宿主的依赖打补丁** —— 这是 pnpm 有意的设计,而且正是它让这件事可信的原因。一个装上就改别人依赖的插件,和一个被扫描器标记的插件,是同一个东西。
+
+补丁的采用必须是**根工作区的一次明确选择**。`dsh-substrate-check` 检测到冲突时会把这段 YAML 直接打出来,让它离你只有一次复制粘贴——但按下去的那一下,是你按的。
 
 ## 这份补丁做什么
 
