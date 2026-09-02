@@ -39,6 +39,7 @@ DSH 还没有正式版本。它今天缺的东西——客户端槽位的 rank�
 | `experiments/` | mechanism experiments against a real harness checkout (160 assertions) |
 | `e2e/` | the whole thing booted: corpus packages on a real shipped profile |
 | `plugin/` | the installable plugin — [contract](plugin/CONTRACT.md) and [what was actually tested](plugin/TESTED.md) |
+| `patches/` | the one distributable fix — [why `pnpm patch` and not a preload or a fork](patches/README.md) |
 | `docs/` | design notes and Discussion drafts |
 | [`ADAPTATION.md`](ADAPTATION.md) | 跟哪个版本、每次更新怎么重验、什么时候该删代码而不是修测试 |
 

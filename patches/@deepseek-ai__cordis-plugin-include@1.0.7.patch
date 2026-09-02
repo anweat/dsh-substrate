@@ -1,0 +1,58 @@
+--- a/lib/index.js	2026-09-02 12:25:30.283567700 +0800
++++ b/lib/index.js	2026-09-02 12:25:30.370574800 +0800
+@@ -54,6 +54,45 @@
+ * @param warn - sink for skipped-patch diagnostics (printf-style, `%C` = code).
+ * @returns a detached entry list with every applicable patch applied.
+ */
++/**
++ * Give a later claimant of a taken entry id its package-derived id instead.
++ *
++ * Two packages that hardcode the same id cannot be installed together today:
++ * `EntryGroup.update` rejects the id list before it reads `disabled`, and a
++ * patch layer cannot rename a row, so neither the user nor a plugin has a
++ * lever. Rewriting here, before any patch reads the rows, gives both rows a
++ * distinct and still-addressable id.
++ *
++ * The id is derived from the package name rather than an ordinal on purpose.
++ * Derivation is a function of the name, so two rows derive the same id exactly
++ * when they name the same package — a double-install, which is a mistake and
++ * not a coexistence problem. Those are left to collide, so the loader keeps
++ * rejecting them. An ordinal would have silenced that case too.
++ *
++ * The first claimant always keeps the contested id, so anything already
++ * targeting it lands where it did before.
++ */
++function resolveDuplicateEntryIds(data, log) {
++	const nameCount = new Map();
++	for (const row of data) {
++		if (typeof row.name !== "string") continue;
++		nameCount.set(row.name, (nameCount.get(row.name) ?? 0) + 1);
++	}
++	const seen = new Set();
++	for (const row of data) {
++		if (row.id === undefined) continue;
++		if (!seen.has(row.id)) {
++			seen.add(row.id);
++			continue;
++		}
++		if (typeof row.name !== "string" || nameCount.get(row.name) > 1) continue;
++		const derived = row.name.replace(/^@/, "").replace(/[^a-zA-Z0-9]+/g, "-").replace(/^-|-$/g, "").toLowerCase();
++		if (derived === "" || seen.has(derived)) continue;
++		log(`entry id "${row.id}" already taken; ${row.name} mounted as "${derived}"`);
++		row.id = derived;
++		seen.add(derived);
++	}
++}
+ function applyEntryPatches(data, patches, warn) {
+ 	data = structuredClone(data);
+ 	if (!patches?.length) return data;
+@@ -196,6 +235,9 @@
+ 		};
+ 	}
+ 	applyPatches(data, patches) {
++		resolveDuplicateEntryIds(data, (message) => {
++			this.ctx.root.logger?.("loader").info(message);
++		});
+ 		return applyEntryPatches(data, patches, (message, ...args) => {
+ 			this.ctx.root.logger?.("loader").warn(message, ...args);
+ 		});
