@@ -40,6 +40,7 @@ const REGISTRY = [
   { file: 'lab-derived-entry-id.ts', asks: '从 npm 包名派生 entry id 是否可行;派生装在哪一层才保住"可定位"', phase: 'L3' },
   { file: 'lab-auto-dedup.ts', asks: '写死的重复 id 能否零作者改动自动解决;真配置错误还响不响', phase: 'L3' },
   { file: 'lab-adaptive-shim.ts', asks: '工具分层能否在注册那一刻决定,从而完全不需要目录', phase: 'L3' },
+  { file: 'lab-adaptive-runtime.ts', asks: '自适应分层做成 ToolRuntime 补丁后,插件零感知;卸载能否带走它的工具', phase: 'L3' },
   { file: 'lab-no-restart.ts', asks: '改补丁层要不要重启、爆炸半径多大、浏览器那一侧收不收得到名册变更', phase: 'P3.6' },
 ]
 
