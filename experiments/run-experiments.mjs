@@ -36,6 +36,7 @@ const REGISTRY = [
   { file: 'lab-client-priority.ts', asks: 'BootPluginRow 带 priority 后,前端争用能否从整包禁用变成槽位让位', phase: 'P3.5', needsPatch: 'bootpluginrow-priority.patch' },
   { file: 'lab-panel.ts', asks: '面板脚手架在真 SlotRegistry/WebServer/connection 上:身份是否跟随调用方 ctx、派生通道能否让同名面板共存', phase: 'L4' },
   { file: 'lab-duplicate-entry-id.ts', asks: '补丁层能否解决重复 entry id;disabled 与改 id 各自有没有用(源自 anweat/dsh-browser#11)', phase: 'L3' },
+  { file: 'lab-id-injection.ts', asks: '重复 id 的拒绝能否从内核外替换;插件能不能是替换它的人', phase: 'L3' },
   { file: 'lab-no-restart.ts', asks: '改补丁层要不要重启、爆炸半径多大、浏览器那一侧收不收得到名册变更', phase: 'P3.6' },
 ]
 
