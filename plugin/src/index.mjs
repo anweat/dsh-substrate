@@ -17,8 +17,24 @@
  * @module @anweat/dsh-substrate
  */
 
+import { stage, unstage, isStaged } from './stage-patch.mjs'
+
 export const name = 'dsh-substrate'
 export const inject = ['tools']
+
+/**
+ * Config. `applyLoaderPatch` is off by default and stays off until someone
+ * turns it on: it writes into the profile's workspace, and a plugin that did
+ * that on installation would be doing the thing the switch exists to make
+ * visible.
+ */
+export const Config = {
+  applyLoaderPatch: {
+    type: 'boolean',
+    default: false,
+    description: '把 loader 的 entry-id 去重补丁写进本 profile。写完需要跑一次安装才生效;关掉会原样撤回。',
+  },
+}
 
 /**
  * Tool names that are reserved outright and cannot be layered or shadowed.
@@ -36,6 +52,28 @@ const RESERVED = Object.freeze(['run_code'])
  */
 export function apply(ctx, config = {}) {
   const log = config.log ?? (line => { ctx.logger?.info?.(line) ?? console.log(line) })
+
+  // Staging is a file write, so it happens on the setting rather than on a
+  // schedule, and it never runs the installer itself — that command is printed
+  // for a person to run after reading what was written.
+  const profileDir = config.profileDir ?? ctx.get?.('dshHomePath')?.('profiles')
+  if (profileDir !== undefined) {
+    try {
+      if (config.applyLoaderPatch === true) {
+        const result = stage(profileDir)
+        log(result.changed
+          ? `dsh-substrate: 已写入 ${result.manifest} 与 ${result.patch};跑一次 \`${result.install}\` 后重启生效`
+          : 'dsh-substrate: loader 补丁已在本 profile 就位')
+      } else if (isStaged(profileDir)) {
+        const result = unstage(profileDir)
+        if (result.changed) log(`dsh-substrate: 已撤回 loader 补丁;跑一次 \`${result.install}\` 让它离开 node_modules`)
+      }
+    } catch (error) {
+      // A failed write must be loud and must not stop the rest of the plugin:
+      // the report below is useful even when staging is impossible.
+      log(`dsh-substrate: loader 补丁未能写入 —— ${String(error?.message ?? error)}`)
+    }
+  }
 
   // Not in the body of `apply`: at apply time the tool registry is typically
   // empty, because this plugin activates the moment `tools` exists and the

@@ -103,6 +103,34 @@ node --import tsx/esm --import ./dedup-preload.mjs <app>
 
 作为**临时逃生口**它成立;作为插件要发布的东西不成立。实测在 [`lab-id-injection.ts`](../experiments/lab-id-injection.ts)(6 断言)。
 
+## 补丁怎么装:一个开关,不是一次安装副作用
+
+`applyLoaderPatch` **默认关闭**。打开它,插件会:
+
+```
+写入   <profile>/patches/@deepseek-ai__cordis-plugin-include@1.0.7.patch
+追加   <profile>/pnpm-workspace.yaml 里一段带标记的 patchedDependencies
+打印   下一步该跑的那条安装命令
+```
+
+关掉它,这两样**逐字撤回**——清单还原到写入前的字节,补丁文件删除。有断言钉住这一点,因为"可逆"如果只是说法,没人会相信这个开关。
+
+**它不会自己跑安装。** 写声明和装依赖是两件事,第二件是 `dsh plugin` 的活,由读过第一件写了什么的人来按。一个改设置就装软件的插件,恰恰是这个开关想避免的东西。
+
+追加而不是重写清单,是因为那个文件是共用的:DSH 管着 `nodeLinker`、`autoInstallPeers`、`strictDepBuilds`,用户也可能加了自己的键。重写会把两边都悄悄抹掉。
+
+### 为什么不能装上就自动生效
+
+**pnpm 不读依赖包声明的 `patchedDependencies`。** 实测,同一份补丁文件:
+
+```
+依赖的 package.json          未应用
+根 package.json              未应用(pnpm 11 已废弃该位置)
+pnpm-workspace.yaml          已应用 ✓
+```
+
+所以采用补丁必然是根工作区的一次明确动作。这不是要绕开的限制,而是这件事可信的原因。
+
 ## 两个命令,因为两类冲突发生在不同时刻
 
 ```
