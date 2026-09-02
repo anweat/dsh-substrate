@@ -148,6 +148,32 @@ async function main(): Promise<void> {
       (stillDuplicate ?? 'booted').slice(0, 140))
   }
 
+  console.log('\n=== 省略 id 会怎样 ===')
+  {
+    // `EntryTree.ensureId` generates a random unused id for a row that has
+    // none, looping until it finds one free. So a row without an id cannot
+    // collide with anything, by construction.
+    const NO_ID = `
+- id: browser
+  name: ./recorder.mjs
+  config:
+    who: builtin
+
+- name: ./recorder.mjs
+  config:
+    who: third-party
+`
+    const failure = await bootWith(dir, NO_ID, [])
+    check('不写 id 的行与 id: browser 共存', failure === undefined, (failure ?? '').slice(0, 140))
+    check('两个插件都挂上了', mounted().join(',') === 'builtin,third-party', mounted().join(','))
+
+    // The cost: a generated id is random, so nothing can address that row later.
+    const addressed = await bootWith(dir, NO_ID, [{ id: 'browser', disabled: true }])
+    check('生成 id 的那行无法被后续补丁按 id 定位 —— 这是省略 id 的代价',
+      addressed === undefined && mounted().join(',') === 'third-party',
+      `${addressed ?? 'booted'} | ${mounted().join(',')}`)
+  }
+
   rmSync(dir, { recursive: true, force: true })
   console.log(`\n=== 结果: ${ok} 通过, ${fail} 失败 ===`)
   process.exitCode = fail === 0 ? 0 : 1

@@ -31,7 +31,7 @@ console.log('\n=== 真实案例:anweat/dsh-browser#11 ===')
   check('不把 browser-electron 算进去 —— 它的 id 是唯一的',
     !result.fatal.some(f => f.id === 'browser-electron'))
   check('给出两条为什么补丁层修不了', result.fatal[0].whyPatchesCannotFix.length === 2)
-  check('给出出路', typeof result.fatal[0].fix === 'string' && result.fatal[0].fix !== '')
+  check('给出三条出路,并指明谁能做', result.fatal[0].fix.length === 3, JSON.stringify(result.fatal[0].fix))
 }
 
 console.log('\n=== 被停掉的行仍然算数 ===')

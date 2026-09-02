@@ -21,8 +21,10 @@ $ dsh-substrate-check repro.yml
     · applyEntryPatches skips `id` when copying overrides,
       so a patch cannot rename a row
 
-    出路:make one of these rows use a different id; only the plugin that
-          owns it, or a config option it exposes, can do that
+    出路(后续补丁层不在其列):
+      · 拥有其中一行的插件,在它自己的 cordis.patch.yml 里改掉那个 id
+      · 或者干脆不写 id:ensureId 会生成一个空闲的
+      · 或者把 id 做成配置项
 
 退出码 1
 ```
@@ -46,7 +48,7 @@ dsh-substrate: 15 个工具在全局命名空间,0 个重名
 
 | | |
 |---|---|
-| [`lab-duplicate-entry-id.ts`](../experiments/lab-duplicate-entry-id.ts) | 11 —— 复现、`disabled` 无效、补丁改不了 id、id 唯一后正常、**抛错时零插件挂载** |
+| [`lab-duplicate-entry-id.ts`](../experiments/lab-duplicate-entry-id.ts) | 14 —— 复现、`disabled` 无效、补丁改不了 id、**不写 id 则永不撞车**、id 唯一后正常、**抛错时零插件挂载** |
 | [`plugin/test/check.spec.mjs`](test/check.spec.mjs) | 19 —— 含真实案例;被停的行仍算数;结论限定在自己看得见的范围 |
 
 ## 开发中被真机否掉的两处

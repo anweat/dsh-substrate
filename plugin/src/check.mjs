@@ -68,7 +68,14 @@ export function inspect(rows) {
         'EntryGroup.update rejects the id list before it reads `disabled`, so switching a row off leaves it holding the id',
         'applyEntryPatches skips `id` when copying overrides, so a patch cannot rename a row',
       ],
-      fix: `make one of these rows use a different id; only the plugin that owns it, or a config option it exposes, can do that`,
+      // Who can act, and how. A later patch layer is not on this list, and
+      // saying only "make the id unique" leaves a reader hunting for a lever
+      // that does not exist. Each option is measured in the same experiment.
+      fix: [
+        '拥有其中一行的插件,在它自己的 cordis.patch.yml 里改掉那个 id —— 仍可被后续补丁按 id 定位',
+        '或者干脆不写 id:EntryTree.ensureId 会生成一个空闲的,代价是那行再也无法按 id 定位',
+        '或者把 id 做成配置项,让部署方自己决定',
+      ],
     })
   }
   return { fatal, rows: rows.length }
@@ -89,7 +96,9 @@ export function render({ fatal, rows }) {
     for (const c of f.claimants) lines.push(`      ${c}`)
     lines.push('')
     for (const why of f.whyPatchesCannotFix) lines.push(`    · ${why}`)
-    lines.push(`\n    出路:${f.fix}\n`)
+    lines.push('\n    出路(后续补丁层不在其列):')
+    for (const option of f.fix) lines.push(`      · ${option}`)
+    lines.push('')
   }
   return lines.join('\n')
 }
