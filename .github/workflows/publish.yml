@@ -44,12 +44,12 @@ jobs:
         run: npm ci
         working-directory: plugin
 
-      - name: Run tests
-        run: npm test
-
       - name: Build plugin
         run: npm run build
         working-directory: plugin
+
+      - name: Run tests
+        run: npm test
 
       - name: Verify release version
         shell: bash
