@@ -1,15 +1,16 @@
 /**
- * Stage the loader patch into a profile, or take it back out.
+ * Write the loader patch into a pnpm workspace, or take it back out.
  *
- * Splitting this from the plugin body so the decision it encodes is testable
- * without a booted tree: what gets written, what gets left alone, and what
- * `enabled: false` restores.
+ * Which workspace is not this module's decision — `patch-target.mjs` resolves
+ * it, and getting it wrong is silent: a declaration in a profile is accepted by
+ * pnpm and patches nothing, because profiles do not depend on the loader.
  *
- * Nothing here runs a package manager. Writing the declaration and installing
- * it are different acts — the second one is `dsh plugin`'s job, invoked by a
- * person who has read what the first one wrote. A plugin that did both on a
- * setting change would be a plugin that installs software when you flip a
- * switch, which is the behaviour the switch exists to make visible.
+ * Nothing here runs a package manager. Writing the declaration and applying it
+ * are different acts: pnpm applies `patchedDependencies` while it links
+ * packages, so the patch takes effect at the next install and not before.
+ * Running that install would mean a plugin reinstalling the dsh that hosts it,
+ * from inside that dsh; reporting the command instead keeps the act with the
+ * person who can see what it will touch.
  *
  * @module @anweat/dsh-substrate/stage-patch
  */
@@ -21,19 +22,35 @@ const here = dirname(fileURLToPath(import.meta.url))
 
 /** The patched package, pinned to the version the diff was generated against. */
 export const PATCH_TARGET = '@deepseek-ai/cordis-plugin-include@1.0.7'
+/** Exact loader version the patch was generated against. */
+export const PATCH_VERSION = '1.0.7'
 /** File name under the profile's `patches/`, and under this package's. */
 export const PATCH_FILE = '@deepseek-ai__cordis-plugin-include@1.0.7.patch'
+
+/** Audited release artifacts only; do not widen this to a semver range. */
+export function patchFor(version = PATCH_VERSION) {
+  if (['0.1.2-alpha.2', '0.1.2-alpha.3', '0.1.2-alpha.4', '0.1.2-alpha.5'].includes(version)) {
+    return {version, target: `@deepseek-ai/dsh-app-boot@${version}`,
+      file: `@deepseek-ai__dsh-app-boot@${version}.patch`}
+  }
+  if (!['1.0.6', '1.0.7'].includes(version)) return undefined
+  return {
+    version,
+    target: `@deepseek-ai/cordis-plugin-include@${version}`,
+    file: `@deepseek-ai__cordis-plugin-include@${version}.patch`,
+  }
+}
 
 /** Marks the block this module owns, so removal takes back exactly what it wrote. */
 const BEGIN = '# >>> dsh-substrate: loader entry-id patch'
 const END = '# <<< dsh-substrate'
 
 /** The declaration block, as pnpm 11 reads it — from the workspace manifest, not package.json. */
-function block() {
+function block(patch) {
   return [
     BEGIN,
     'patchedDependencies:',
-    `  '${PATCH_TARGET}': patches/${PATCH_FILE}`,
+    `  '${patch.target}': patches/${patch.file}`,
     END,
   ].join('\n')
 }
@@ -48,54 +65,63 @@ function withoutBlock(text) {
 }
 
 /**
- * Whether a profile currently carries this module's declaration.
+ * Whether a workspace currently carries this module's declaration.
  *
- * @param {string} profileDir Profile directory.
+ * @param {string} workspaceRoot The workspace whose `pnpm-workspace.yaml` pnpm reads.
  * @returns {boolean} True when both the block and the patch file are present.
  */
-export function isStaged(profileDir) {
-  const manifest = join(profileDir, 'pnpm-workspace.yaml')
+export function isStaged(workspaceRoot, version = PATCH_VERSION) {
+  const patch = patchFor(version)
+  if (!patch) return false
+  const manifest = join(workspaceRoot, 'pnpm-workspace.yaml')
   if (!existsSync(manifest)) return false
-  return readFileSync(manifest, 'utf8').includes(BEGIN)
-    && existsSync(join(profileDir, 'patches', PATCH_FILE))
+  const text = readFileSync(manifest, 'utf8')
+  return text.includes(BEGIN) && text.includes(`'${patch.target}': patches/${patch.file}`)
+    && existsSync(join(workspaceRoot, 'patches', patch.file))
 }
 
 /**
- * Write the patch and its declaration into a profile.
+ * Write the patch and its declaration into a workspace.
  *
  * The workspace manifest is appended to rather than rewritten: DSH manages
  * three keys in that file and a user may have added more, so replacing it would
  * silently discard both.
  *
- * @param {string} profileDir Profile directory.
- * @param {string} [patchSource] Directory holding the `.patch`; defaults to this package's.
+ * @param {string} workspaceRoot The workspace whose `pnpm-workspace.yaml` pnpm reads.
+ * @param {string} [patchSource] Directory holding the `.patch`; defaults to the copy
+ *   shipped inside this package, which is the only one present once installed.
  * @returns {{ changed: boolean, manifest: string, patch: string, install: string }} What happened and what to run next.
  */
-export function stage(profileDir, patchSource = join(here, '..', '..', 'patches')) {
-  const manifestPath = join(profileDir, 'pnpm-workspace.yaml')
-  const patchPath = join(profileDir, 'patches', PATCH_FILE)
-  const install = `dsh plugin --profile <profile> install`
-  if (isStaged(profileDir)) return { changed: false, manifest: manifestPath, patch: patchPath, install }
-
-  const source = join(patchSource, PATCH_FILE)
+export function stage(workspaceRoot, patchSource = join(here, '..', 'patches'), version = PATCH_VERSION) {
+  const patch = patchFor(version)
+  if (!patch) throw new Error(`stage-patch: unsupported loader ${version}`)
+  const manifestPath = join(workspaceRoot, 'pnpm-workspace.yaml')
+  const patchPath = join(workspaceRoot, 'patches', patch.file)
+  const install = 'pnpm install'
+  const source = join(patchSource, patch.file)
   if (!existsSync(source)) throw new Error(`stage-patch: no patch at ${source}`)
+  if (isStaged(workspaceRoot, version) && readFileSync(source, 'utf8') === readFileSync(patchPath, 'utf8')) {
+    return { changed: false, manifest: manifestPath, patch: patchPath, install }
+  }
   mkdirSync(dirname(patchPath), { recursive: true })
   writeFileSync(patchPath, readFileSync(source, 'utf8'))
 
   const current = existsSync(manifestPath) ? readFileSync(manifestPath, 'utf8') : ''
-  writeFileSync(manifestPath, `${withoutBlock(current).trimEnd()}\n\n${block()}\n`)
+  writeFileSync(manifestPath, `${withoutBlock(current).trimEnd()}\n\n${block(patch)}\n`)
   return { changed: true, manifest: manifestPath, patch: patchPath, install }
 }
 
 /**
  * Take the declaration and the patch file back out.
  *
- * @param {string} profileDir Profile directory.
+ * @param {string} workspaceRoot The workspace whose `pnpm-workspace.yaml` pnpm reads.
  * @returns {{ changed: boolean, install: string }} Whether anything was removed, and what re-installs without it.
  */
-export function unstage(profileDir) {
-  const manifestPath = join(profileDir, 'pnpm-workspace.yaml')
-  const install = `dsh plugin --profile <profile> install`
+export function unstage(workspaceRoot, version = PATCH_VERSION) {
+  const patch = patchFor(version)
+  if (!patch) throw new Error(`stage-patch: unsupported loader ${version}`)
+  const manifestPath = join(workspaceRoot, 'pnpm-workspace.yaml')
+  const install = 'pnpm install'
   let changed = false
 
   if (existsSync(manifestPath)) {
@@ -103,7 +129,7 @@ export function unstage(profileDir) {
     const next = withoutBlock(current)
     if (next !== current) { writeFileSync(manifestPath, next.trimEnd() + '\n'); changed = true }
   }
-  const patchPath = join(profileDir, 'patches', PATCH_FILE)
+  const patchPath = join(workspaceRoot, 'patches', patch.file)
   if (existsSync(patchPath)) { rmSync(patchPath); changed = true }
   return { changed, install }
 }

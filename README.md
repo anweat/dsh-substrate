@@ -1,5 +1,7 @@
 # dsh-substrate
 
+2026-09-07：可安装插件的当前版本范围与验收见 [pnpm compatibility](docs/pnpm-plugin-compatibility.md)。npm alpha.2～.5 使用内嵌 Include 的 app-boot 补丁；源码矩阵、独立 loader 实验与真正安装后的验证分别记录。
+
 A conflict-resolution substrate for the DeepSeek Harness plugin ecosystem, and the measurements it is built on.
 
 The ecosystem has a structural problem: **9,216 root inserts and 0 group inserts** across 9,873 scanned plugins, while the shipped design keeps the global layer empty. Every plugin author sees only their own row, so every plugin inserts into the one layer it can see, and they land on top of each other. Installing all of them makes **581 registry cells throw**, and any one of those is a boot failure.
@@ -28,7 +30,7 @@ booted for real, 2,768 packages · 11,911 tool registrations
 
 DSH 还没有正式版本。它今天缺的东西——客户端槽位的 rank、令牌的导出面、名册变更的转发——都是官方迟早会自己补上的,每补上一样这里就该少一块。衡量标准不是功能多完整,而是**还剩多少没被上游吸收**。全部落地时,这里应该只剩测量管线。
 
-跟随正式版本,不跟 alpha。当前基线 `dsh-v0.1.1-rc.2-5-g50854a854f`。每次版本更新怎么重新验证、断言失败该读作"上游改了实现"还是"上游吸收了缺口",见 [ADAPTATION.md](ADAPTATION.md)。
+运行时历史研究基线为 `dsh-v0.1.1-rc.2-5-g50854a854f`;安装修复按 loader 精确版本选择 `1.0.6` 或 `1.0.7` 补丁。已逐标签检查 6 个 alpha 构建,覆盖范围及完整启动限制见 [alpha 适配记录](docs/alpha-compatibility.md)。机制证据与安装兼容范围分别记录;重验和删除已被上游吸收的兜底代码的原则见 [ADAPTATION.md](ADAPTATION.md)。
 
 ## Layout
 
@@ -42,6 +44,33 @@ DSH 还没有正式版本。它今天缺的东西——客户端槽位的 rank�
 | `patches/` | the one distributable fix — [why `pnpm patch` and not a preload or a fork](patches/README.md) |
 | `docs/` | design notes and Discussion drafts |
 | [`ADAPTATION.md`](ADAPTATION.md) | 跟哪个版本、每次更新怎么重验、什么时候该删代码而不是修测试 |
+
+## Product shape
+
+The Web card is a read-only compatibility surface, not a patch toggle. It reports the exact installation, target version, and repair phase, then hands an explicit command to an external process. `dsh-substrate repair --apply` validates again, stages the version-locked patch, runs `pnpm install` in the real DSH installation workspace, and verifies the installed file; a restarted Host is the only thing allowed to call the repair `verified`. `--revert` follows the same transaction in reverse.
+
+This split is intentional: a plugin already running inside DSH must not reinstall the process hosting it, and “declaration written”, “dependency relinked”, and “new process loaded” are different facts.
+
+## Install
+
+Install the compatibility card into the DSH Web profile, then restart DSH:
+
+```powershell
+dsh plugin --profile web add @anweat/dsh-substrate@^0.1.1
+```
+
+The card reports the exact installation and repair state. Run the write transaction outside DSH, then restart DSH again so a new Host can verify the loaded code:
+
+```powershell
+npx --yes @anweat/dsh-substrate@0.1.1 repair --home "<DSH_HOME>"
+npx --yes @anweat/dsh-substrate@0.1.1 repair --home "<DSH_HOME>" --apply --yes
+```
+
+To undo it, run `npx --yes @anweat/dsh-substrate@0.1.1 repair --home "<DSH_HOME>" --revert --yes`, then restart DSH. Version `0.1.0` requires `--legacy-peer-deps` immediately after `--yes` when invoked through `npx`; `0.1.1` removes that workaround.
+
+The repair supports `@deepseek-ai/cordis-plugin-include@1.0.6` and `1.0.7`, plus `@deepseek-ai/dsh-app-boot@0.1.2-alpha.2` through `alpha.5`. It fixes duplicate loader entry IDs. Service-name and tool-name collisions occur later in boot and still require host composition with service realms and tool scopes. See the packaged [installation guide](plugin/README.md) and the [browser coexistence verification](docs/browser-issue11-verification.md).
+
+## Develop
 
 ```bash
 npm install

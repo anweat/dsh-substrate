@@ -1,0 +1,1139 @@
+{
+  "checkedAt": "2026-09-07T05:15:46.853Z",
+  "upstream": "https://github.com/deepseek-ai/deepseek-harness",
+  "environment": {
+    "platform": "win32-x64",
+    "node": "v24.14.0",
+    "pnpm": "11.7.0",
+    "install": "frozen-lockfile, ignore-scripts, no-optional; esbuild 0.28.1, Koffi 3.1.1, sharp 0.35.3 Windows binaries and locally compiled fs-ext 2.1.1 supplied separately",
+    "nativeRecovery": "Initial full-profile failures due to omitted native dependencies were retained as *-before-native-e2e.log; upstream source was not modified",
+    "artifacts": "D:/codeproject/dsh-alpha-compat-20260907-artifacts"
+  },
+  "localTests": {
+    "passed": 389,
+    "failed": 0
+  },
+  "clientBuild": "passed; no per-version browser rendering claim",
+  "publishedLoaders": [
+    {
+      "version": "1.0.6",
+      "passed": true,
+      "before": [
+        "browser",
+        "browser"
+      ],
+      "after": [
+        "browser",
+        "b-browser"
+      ],
+      "restored": [
+        "browser",
+        "browser"
+      ]
+    },
+    {
+      "version": "1.0.7",
+      "passed": true,
+      "before": [
+        "browser",
+        "browser"
+      ],
+      "after": [
+        "browser",
+        "b-browser"
+      ],
+      "restored": [
+        "browser",
+        "browser"
+      ]
+    }
+  ],
+  "versions": [
+    {
+      "tag": "dsh-v0.1.2-alpha.1",
+      "commit": "cd5ef8148158c3a752a658978873241fdf8e2bbc",
+      "loader": "1.0.6",
+      "ranAt": "2026-09-07T05:04:22.231Z",
+      "experiments": {
+        "passed": 202,
+        "failed": 0,
+        "skipped": [
+          "lab-scale.ts",
+          "lab-client-priority.ts"
+        ],
+        "suites": [
+          {
+            "file": "lab-plugin-host.ts",
+            "phase": "插件",
+            "ok": true,
+            "passed": 3,
+            "failed": 0,
+            "total": 3
+          },
+          {
+            "file": "lab-isolate-proxy.ts",
+            "phase": "P0",
+            "ok": true,
+            "passed": 10,
+            "failed": 0,
+            "total": 10
+          },
+          {
+            "file": "lab-real-registry.ts",
+            "phase": "P0",
+            "ok": true,
+            "passed": 12,
+            "failed": 0,
+            "total": 12
+          },
+          {
+            "file": "lab-loader-isolate.ts",
+            "phase": "P0",
+            "ok": true,
+            "passed": 6,
+            "failed": 0,
+            "total": 6
+          },
+          {
+            "file": "lab-event-order.ts",
+            "phase": "P0",
+            "ok": true,
+            "passed": 5,
+            "failed": 0,
+            "total": 5
+          },
+          {
+            "file": "lab-substrate-e2e.ts",
+            "phase": "P3",
+            "ok": true,
+            "passed": 18,
+            "failed": 0,
+            "total": 18
+          },
+          {
+            "file": "lab-gatekeeper-timing.ts",
+            "phase": "P3",
+            "ok": true,
+            "passed": 9,
+            "failed": 0,
+            "total": 9
+          },
+          {
+            "file": "lab-gate-ordering.ts",
+            "phase": "P3",
+            "ok": true,
+            "passed": 7,
+            "failed": 0,
+            "total": 7
+          },
+          {
+            "file": "lab-gatekeeper-plugin.ts",
+            "phase": "P3",
+            "ok": true,
+            "passed": 13,
+            "failed": 0,
+            "total": 13
+          },
+          {
+            "file": "lab-preset-host.ts",
+            "phase": "P3",
+            "ok": true,
+            "passed": 18,
+            "failed": 0,
+            "total": 18
+          },
+          {
+            "file": "lab-panel.ts",
+            "phase": "L4",
+            "ok": true,
+            "passed": 14,
+            "failed": 0,
+            "total": 14
+          },
+          {
+            "file": "lab-duplicate-entry-id.ts",
+            "phase": "L3",
+            "ok": true,
+            "passed": 14,
+            "failed": 0,
+            "total": 14
+          },
+          {
+            "file": "lab-id-injection.ts",
+            "phase": "L3",
+            "ok": true,
+            "passed": 6,
+            "failed": 0,
+            "total": 6
+          },
+          {
+            "file": "lab-derived-entry-id.ts",
+            "phase": "L3",
+            "ok": true,
+            "passed": 13,
+            "failed": 0,
+            "total": 13
+          },
+          {
+            "file": "lab-auto-dedup.ts",
+            "phase": "L3",
+            "ok": true,
+            "passed": 11,
+            "failed": 0,
+            "total": 11
+          },
+          {
+            "file": "lab-adaptive-shim.ts",
+            "phase": "L3",
+            "ok": true,
+            "passed": 10,
+            "failed": 0,
+            "total": 10
+          },
+          {
+            "file": "lab-adaptive-runtime.ts",
+            "phase": "L3",
+            "ok": true,
+            "passed": 12,
+            "failed": 0,
+            "total": 12
+          },
+          {
+            "file": "lab-no-restart.ts",
+            "phase": "P3.6",
+            "ok": true,
+            "passed": 21,
+            "failed": 0,
+            "total": 21
+          }
+        ]
+      },
+      "coreE2e": {
+        "passed": 7,
+        "packages": 400,
+        "registrations": 5298,
+        "ownerVerification": "all",
+        "logSha256": "f15a7941121c7748f5d9d274c406967c9a0415cb56cfabb70964baf38837fcb9"
+      },
+      "shippedE2e": {
+        "status": "passed",
+        "passed": 7,
+        "logSha256": "1cc992ea60bad2803d40d2436392b324499ae9016844b256a0343bddf17b9abd"
+      },
+      "baseline": {
+        "sha256": "442494e71d4f4e8874cc9c579ac6425ad35fdccbf2fa95704b53fd9c9052dfc4",
+        "slots": 52,
+        "services": 68,
+        "events": 65,
+        "tools": 65,
+        "artifact": "dsh-v0.1.2-alpha.1-baseline.json"
+      },
+      "loaderSourceBlob": "5ee20ef43eb849fad270174857d73666899d0a05"
+    },
+    {
+      "tag": "dsh-v0.1.2-alpha.2",
+      "commit": "0a53fb55bea101816fa226bb964ae2bed71c343b",
+      "loader": "1.0.7",
+      "ranAt": "2026-09-07T05:06:20.843Z",
+      "experiments": {
+        "passed": 202,
+        "failed": 0,
+        "skipped": [
+          "lab-scale.ts",
+          "lab-client-priority.ts"
+        ],
+        "suites": [
+          {
+            "file": "lab-plugin-host.ts",
+            "phase": "插件",
+            "ok": true,
+            "passed": 3,
+            "failed": 0,
+            "total": 3
+          },
+          {
+            "file": "lab-isolate-proxy.ts",
+            "phase": "P0",
+            "ok": true,
+            "passed": 10,
+            "failed": 0,
+            "total": 10
+          },
+          {
+            "file": "lab-real-registry.ts",
+            "phase": "P0",
+            "ok": true,
+            "passed": 12,
+            "failed": 0,
+            "total": 12
+          },
+          {
+            "file": "lab-loader-isolate.ts",
+            "phase": "P0",
+            "ok": true,
+            "passed": 6,
+            "failed": 0,
+            "total": 6
+          },
+          {
+            "file": "lab-event-order.ts",
+            "phase": "P0",
+            "ok": true,
+            "passed": 5,
+            "failed": 0,
+            "total": 5
+          },
+          {
+            "file": "lab-substrate-e2e.ts",
+            "phase": "P3",
+            "ok": true,
+            "passed": 18,
+            "failed": 0,
+            "total": 18
+          },
+          {
+            "file": "lab-gatekeeper-timing.ts",
+            "phase": "P3",
+            "ok": true,
+            "passed": 9,
+            "failed": 0,
+            "total": 9
+          },
+          {
+            "file": "lab-gate-ordering.ts",
+            "phase": "P3",
+            "ok": true,
+            "passed": 7,
+            "failed": 0,
+            "total": 7
+          },
+          {
+            "file": "lab-gatekeeper-plugin.ts",
+            "phase": "P3",
+            "ok": true,
+            "passed": 13,
+            "failed": 0,
+            "total": 13
+          },
+          {
+            "file": "lab-preset-host.ts",
+            "phase": "P3",
+            "ok": true,
+            "passed": 18,
+            "failed": 0,
+            "total": 18
+          },
+          {
+            "file": "lab-panel.ts",
+            "phase": "L4",
+            "ok": true,
+            "passed": 14,
+            "failed": 0,
+            "total": 14
+          },
+          {
+            "file": "lab-duplicate-entry-id.ts",
+            "phase": "L3",
+            "ok": true,
+            "passed": 14,
+            "failed": 0,
+            "total": 14
+          },
+          {
+            "file": "lab-id-injection.ts",
+            "phase": "L3",
+            "ok": true,
+            "passed": 6,
+            "failed": 0,
+            "total": 6
+          },
+          {
+            "file": "lab-derived-entry-id.ts",
+            "phase": "L3",
+            "ok": true,
+            "passed": 13,
+            "failed": 0,
+            "total": 13
+          },
+          {
+            "file": "lab-auto-dedup.ts",
+            "phase": "L3",
+            "ok": true,
+            "passed": 11,
+            "failed": 0,
+            "total": 11
+          },
+          {
+            "file": "lab-adaptive-shim.ts",
+            "phase": "L3",
+            "ok": true,
+            "passed": 10,
+            "failed": 0,
+            "total": 10
+          },
+          {
+            "file": "lab-adaptive-runtime.ts",
+            "phase": "L3",
+            "ok": true,
+            "passed": 12,
+            "failed": 0,
+            "total": 12
+          },
+          {
+            "file": "lab-no-restart.ts",
+            "phase": "P3.6",
+            "ok": true,
+            "passed": 21,
+            "failed": 0,
+            "total": 21
+          }
+        ]
+      },
+      "coreE2e": {
+        "passed": 7,
+        "packages": 400,
+        "registrations": 5298,
+        "ownerVerification": "all",
+        "logSha256": "3c9997a2e6684cb4a0cfdc073e0e8c6e530712ee5bf253a40f5948ad6965318f"
+      },
+      "shippedE2e": {
+        "status": "passed",
+        "passed": 7,
+        "logSha256": "65ad297a3fe7bcb0058cc0b2e6398d9329ae7bfca90d132e72b73774c99e1ecf"
+      },
+      "baseline": {
+        "sha256": "90153ee64ed7ffa18d7087f2a581e8f2e516b65cfdac6e5d17d63f5ab4073462",
+        "slots": 52,
+        "services": 68,
+        "events": 65,
+        "tools": 65,
+        "artifact": "dsh-v0.1.2-alpha.2-baseline.json"
+      },
+      "loaderSourceBlob": "5ee20ef43eb849fad270174857d73666899d0a05"
+    },
+    {
+      "tag": "dsh-v0.1.2-alpha.3",
+      "commit": "dd6322d604e00eec1ba5e0c8541159906a21094a",
+      "loader": "1.0.7",
+      "ranAt": "2026-09-07T05:07:42.518Z",
+      "experiments": {
+        "passed": 202,
+        "failed": 0,
+        "skipped": [
+          "lab-scale.ts",
+          "lab-client-priority.ts"
+        ],
+        "suites": [
+          {
+            "file": "lab-plugin-host.ts",
+            "phase": "插件",
+            "ok": true,
+            "passed": 3,
+            "failed": 0,
+            "total": 3
+          },
+          {
+            "file": "lab-isolate-proxy.ts",
+            "phase": "P0",
+            "ok": true,
+            "passed": 10,
+            "failed": 0,
+            "total": 10
+          },
+          {
+            "file": "lab-real-registry.ts",
+            "phase": "P0",
+            "ok": true,
+            "passed": 12,
+            "failed": 0,
+            "total": 12
+          },
+          {
+            "file": "lab-loader-isolate.ts",
+            "phase": "P0",
+            "ok": true,
+            "passed": 6,
+            "failed": 0,
+            "total": 6
+          },
+          {
+            "file": "lab-event-order.ts",
+            "phase": "P0",
+            "ok": true,
+            "passed": 5,
+            "failed": 0,
+            "total": 5
+          },
+          {
+            "file": "lab-substrate-e2e.ts",
+            "phase": "P3",
+            "ok": true,
+            "passed": 18,
+            "failed": 0,
+            "total": 18
+          },
+          {
+            "file": "lab-gatekeeper-timing.ts",
+            "phase": "P3",
+            "ok": true,
+            "passed": 9,
+            "failed": 0,
+            "total": 9
+          },
+          {
+            "file": "lab-gate-ordering.ts",
+            "phase": "P3",
+            "ok": true,
+            "passed": 7,
+            "failed": 0,
+            "total": 7
+          },
+          {
+            "file": "lab-gatekeeper-plugin.ts",
+            "phase": "P3",
+            "ok": true,
+            "passed": 13,
+            "failed": 0,
+            "total": 13
+          },
+          {
+            "file": "lab-preset-host.ts",
+            "phase": "P3",
+            "ok": true,
+            "passed": 18,
+            "failed": 0,
+            "total": 18
+          },
+          {
+            "file": "lab-panel.ts",
+            "phase": "L4",
+            "ok": true,
+            "passed": 14,
+            "failed": 0,
+            "total": 14
+          },
+          {
+            "file": "lab-duplicate-entry-id.ts",
+            "phase": "L3",
+            "ok": true,
+            "passed": 14,
+            "failed": 0,
+            "total": 14
+          },
+          {
+            "file": "lab-id-injection.ts",
+            "phase": "L3",
+            "ok": true,
+            "passed": 6,
+            "failed": 0,
+            "total": 6
+          },
+          {
+            "file": "lab-derived-entry-id.ts",
+            "phase": "L3",
+            "ok": true,
+            "passed": 13,
+            "failed": 0,
+            "total": 13
+          },
+          {
+            "file": "lab-auto-dedup.ts",
+            "phase": "L3",
+            "ok": true,
+            "passed": 11,
+            "failed": 0,
+            "total": 11
+          },
+          {
+            "file": "lab-adaptive-shim.ts",
+            "phase": "L3",
+            "ok": true,
+            "passed": 10,
+            "failed": 0,
+            "total": 10
+          },
+          {
+            "file": "lab-adaptive-runtime.ts",
+            "phase": "L3",
+            "ok": true,
+            "passed": 12,
+            "failed": 0,
+            "total": 12
+          },
+          {
+            "file": "lab-no-restart.ts",
+            "phase": "P3.6",
+            "ok": true,
+            "passed": 21,
+            "failed": 0,
+            "total": 21
+          }
+        ]
+      },
+      "coreE2e": {
+        "passed": 7,
+        "packages": 400,
+        "registrations": 5298,
+        "ownerVerification": "all",
+        "logSha256": "93ff8311880e20669956e86c162458de1c1cf6a67449266ff72d7006945e1ab8"
+      },
+      "shippedE2e": {
+        "status": "passed",
+        "passed": 7,
+        "logSha256": "ce52a6462ea35607a57177181b66e32b1c654a8a98216c7778f943a958706c4b"
+      },
+      "baseline": {
+        "sha256": "db0195a78a537437051c58dee67b0ba6aca3843b3487436e25d6cab4664c7a65",
+        "slots": 52,
+        "services": 68,
+        "events": 65,
+        "tools": 65,
+        "artifact": "dsh-v0.1.2-alpha.3-baseline.json"
+      },
+      "loaderSourceBlob": "5ee20ef43eb849fad270174857d73666899d0a05"
+    },
+    {
+      "tag": "dsh-v0.1.2-alpha.4",
+      "commit": "4e84901e6471b79ec0338099867ebb4606d12bb5",
+      "loader": "1.0.7",
+      "ranAt": "2026-09-07T05:08:27.065Z",
+      "experiments": {
+        "passed": 202,
+        "failed": 0,
+        "skipped": [
+          "lab-scale.ts",
+          "lab-client-priority.ts"
+        ],
+        "suites": [
+          {
+            "file": "lab-plugin-host.ts",
+            "phase": "插件",
+            "ok": true,
+            "passed": 3,
+            "failed": 0,
+            "total": 3
+          },
+          {
+            "file": "lab-isolate-proxy.ts",
+            "phase": "P0",
+            "ok": true,
+            "passed": 10,
+            "failed": 0,
+            "total": 10
+          },
+          {
+            "file": "lab-real-registry.ts",
+            "phase": "P0",
+            "ok": true,
+            "passed": 12,
+            "failed": 0,
+            "total": 12
+          },
+          {
+            "file": "lab-loader-isolate.ts",
+            "phase": "P0",
+            "ok": true,
+            "passed": 6,
+            "failed": 0,
+            "total": 6
+          },
+          {
+            "file": "lab-event-order.ts",
+            "phase": "P0",
+            "ok": true,
+            "passed": 5,
+            "failed": 0,
+            "total": 5
+          },
+          {
+            "file": "lab-substrate-e2e.ts",
+            "phase": "P3",
+            "ok": true,
+            "passed": 18,
+            "failed": 0,
+            "total": 18
+          },
+          {
+            "file": "lab-gatekeeper-timing.ts",
+            "phase": "P3",
+            "ok": true,
+            "passed": 9,
+            "failed": 0,
+            "total": 9
+          },
+          {
+            "file": "lab-gate-ordering.ts",
+            "phase": "P3",
+            "ok": true,
+            "passed": 7,
+            "failed": 0,
+            "total": 7
+          },
+          {
+            "file": "lab-gatekeeper-plugin.ts",
+            "phase": "P3",
+            "ok": true,
+            "passed": 13,
+            "failed": 0,
+            "total": 13
+          },
+          {
+            "file": "lab-preset-host.ts",
+            "phase": "P3",
+            "ok": true,
+            "passed": 18,
+            "failed": 0,
+            "total": 18
+          },
+          {
+            "file": "lab-panel.ts",
+            "phase": "L4",
+            "ok": true,
+            "passed": 14,
+            "failed": 0,
+            "total": 14
+          },
+          {
+            "file": "lab-duplicate-entry-id.ts",
+            "phase": "L3",
+            "ok": true,
+            "passed": 14,
+            "failed": 0,
+            "total": 14
+          },
+          {
+            "file": "lab-id-injection.ts",
+            "phase": "L3",
+            "ok": true,
+            "passed": 6,
+            "failed": 0,
+            "total": 6
+          },
+          {
+            "file": "lab-derived-entry-id.ts",
+            "phase": "L3",
+            "ok": true,
+            "passed": 13,
+            "failed": 0,
+            "total": 13
+          },
+          {
+            "file": "lab-auto-dedup.ts",
+            "phase": "L3",
+            "ok": true,
+            "passed": 11,
+            "failed": 0,
+            "total": 11
+          },
+          {
+            "file": "lab-adaptive-shim.ts",
+            "phase": "L3",
+            "ok": true,
+            "passed": 10,
+            "failed": 0,
+            "total": 10
+          },
+          {
+            "file": "lab-adaptive-runtime.ts",
+            "phase": "L3",
+            "ok": true,
+            "passed": 12,
+            "failed": 0,
+            "total": 12
+          },
+          {
+            "file": "lab-no-restart.ts",
+            "phase": "P3.6",
+            "ok": true,
+            "passed": 21,
+            "failed": 0,
+            "total": 21
+          }
+        ]
+      },
+      "coreE2e": {
+        "passed": 7,
+        "packages": 400,
+        "registrations": 5298,
+        "ownerVerification": "all",
+        "logSha256": "23675ce247525429b852f29b80548c6be1fe3d76cbc1dc72804ed3fe29b75b66"
+      },
+      "shippedE2e": {
+        "status": "passed",
+        "passed": 7,
+        "logSha256": "b8c89256437a0cb71962f360ae1bc5d699f210fc794f179640cc9fe403224712"
+      },
+      "baseline": {
+        "sha256": "30006caf96157525fc0fae2b1c5f381a3f33d872422b17a40ee8b04b175ad211",
+        "slots": 52,
+        "services": 68,
+        "events": 65,
+        "tools": 64,
+        "artifact": "dsh-v0.1.2-alpha.4-baseline.json"
+      },
+      "loaderSourceBlob": "5ee20ef43eb849fad270174857d73666899d0a05"
+    },
+    {
+      "tag": "dsh-v0.1.2-alpha.5",
+      "commit": "db6bdc3576c2d4e7c965e8e3ed0c2a731eed87f5",
+      "loader": "1.0.7",
+      "ranAt": "2026-09-07T05:09:08.298Z",
+      "experiments": {
+        "passed": 202,
+        "failed": 0,
+        "skipped": [
+          "lab-scale.ts",
+          "lab-client-priority.ts"
+        ],
+        "suites": [
+          {
+            "file": "lab-plugin-host.ts",
+            "phase": "插件",
+            "ok": true,
+            "passed": 3,
+            "failed": 0,
+            "total": 3
+          },
+          {
+            "file": "lab-isolate-proxy.ts",
+            "phase": "P0",
+            "ok": true,
+            "passed": 10,
+            "failed": 0,
+            "total": 10
+          },
+          {
+            "file": "lab-real-registry.ts",
+            "phase": "P0",
+            "ok": true,
+            "passed": 12,
+            "failed": 0,
+            "total": 12
+          },
+          {
+            "file": "lab-loader-isolate.ts",
+            "phase": "P0",
+            "ok": true,
+            "passed": 6,
+            "failed": 0,
+            "total": 6
+          },
+          {
+            "file": "lab-event-order.ts",
+            "phase": "P0",
+            "ok": true,
+            "passed": 5,
+            "failed": 0,
+            "total": 5
+          },
+          {
+            "file": "lab-substrate-e2e.ts",
+            "phase": "P3",
+            "ok": true,
+            "passed": 18,
+            "failed": 0,
+            "total": 18
+          },
+          {
+            "file": "lab-gatekeeper-timing.ts",
+            "phase": "P3",
+            "ok": true,
+            "passed": 9,
+            "failed": 0,
+            "total": 9
+          },
+          {
+            "file": "lab-gate-ordering.ts",
+            "phase": "P3",
+            "ok": true,
+            "passed": 7,
+            "failed": 0,
+            "total": 7
+          },
+          {
+            "file": "lab-gatekeeper-plugin.ts",
+            "phase": "P3",
+            "ok": true,
+            "passed": 13,
+            "failed": 0,
+            "total": 13
+          },
+          {
+            "file": "lab-preset-host.ts",
+            "phase": "P3",
+            "ok": true,
+            "passed": 18,
+            "failed": 0,
+            "total": 18
+          },
+          {
+            "file": "lab-panel.ts",
+            "phase": "L4",
+            "ok": true,
+            "passed": 14,
+            "failed": 0,
+            "total": 14
+          },
+          {
+            "file": "lab-duplicate-entry-id.ts",
+            "phase": "L3",
+            "ok": true,
+            "passed": 14,
+            "failed": 0,
+            "total": 14
+          },
+          {
+            "file": "lab-id-injection.ts",
+            "phase": "L3",
+            "ok": true,
+            "passed": 6,
+            "failed": 0,
+            "total": 6
+          },
+          {
+            "file": "lab-derived-entry-id.ts",
+            "phase": "L3",
+            "ok": true,
+            "passed": 13,
+            "failed": 0,
+            "total": 13
+          },
+          {
+            "file": "lab-auto-dedup.ts",
+            "phase": "L3",
+            "ok": true,
+            "passed": 11,
+            "failed": 0,
+            "total": 11
+          },
+          {
+            "file": "lab-adaptive-shim.ts",
+            "phase": "L3",
+            "ok": true,
+            "passed": 10,
+            "failed": 0,
+            "total": 10
+          },
+          {
+            "file": "lab-adaptive-runtime.ts",
+            "phase": "L3",
+            "ok": true,
+            "passed": 12,
+            "failed": 0,
+            "total": 12
+          },
+          {
+            "file": "lab-no-restart.ts",
+            "phase": "P3.6",
+            "ok": true,
+            "passed": 21,
+            "failed": 0,
+            "total": 21
+          }
+        ]
+      },
+      "coreE2e": {
+        "passed": 7,
+        "packages": 400,
+        "registrations": 5298,
+        "ownerVerification": "all",
+        "logSha256": "0d43b908c9884fa30fb3e0c3490f5001644af2604c6facbdaf6d3b0b0b25972d"
+      },
+      "shippedE2e": {
+        "status": "passed",
+        "passed": 7,
+        "logSha256": "255f4e0519b9cb4b5197325fb12bff5df9516917de68de53039e4a796edb14a5"
+      },
+      "baseline": {
+        "sha256": "a2ebf326b461b56d4173995018836b7013d2e089d5abae4c2c42efa937877ea7",
+        "slots": 52,
+        "services": 68,
+        "events": 65,
+        "tools": 64,
+        "artifact": "dsh-v0.1.2-alpha.5-baseline.json"
+      },
+      "loaderSourceBlob": "5ee20ef43eb849fad270174857d73666899d0a05"
+    },
+    {
+      "tag": "dsh-v0.1.3-alpha.1",
+      "commit": "d347e703908d0406b7a7ef80e3a0e594d86b2215",
+      "loader": "1.0.7",
+      "ranAt": "2026-09-07T05:09:52.070Z",
+      "experiments": {
+        "passed": 202,
+        "failed": 0,
+        "skipped": [
+          "lab-scale.ts",
+          "lab-client-priority.ts"
+        ],
+        "suites": [
+          {
+            "file": "lab-plugin-host.ts",
+            "phase": "插件",
+            "ok": true,
+            "passed": 3,
+            "failed": 0,
+            "total": 3
+          },
+          {
+            "file": "lab-isolate-proxy.ts",
+            "phase": "P0",
+            "ok": true,
+            "passed": 10,
+            "failed": 0,
+            "total": 10
+          },
+          {
+            "file": "lab-real-registry.ts",
+            "phase": "P0",
+            "ok": true,
+            "passed": 12,
+            "failed": 0,
+            "total": 12
+          },
+          {
+            "file": "lab-loader-isolate.ts",
+            "phase": "P0",
+            "ok": true,
+            "passed": 6,
+            "failed": 0,
+            "total": 6
+          },
+          {
+            "file": "lab-event-order.ts",
+            "phase": "P0",
+            "ok": true,
+            "passed": 5,
+            "failed": 0,
+            "total": 5
+          },
+          {
+            "file": "lab-substrate-e2e.ts",
+            "phase": "P3",
+            "ok": true,
+            "passed": 18,
+            "failed": 0,
+            "total": 18
+          },
+          {
+            "file": "lab-gatekeeper-timing.ts",
+            "phase": "P3",
+            "ok": true,
+            "passed": 9,
+            "failed": 0,
+            "total": 9
+          },
+          {
+            "file": "lab-gate-ordering.ts",
+            "phase": "P3",
+            "ok": true,
+            "passed": 7,
+            "failed": 0,
+            "total": 7
+          },
+          {
+            "file": "lab-gatekeeper-plugin.ts",
+            "phase": "P3",
+            "ok": true,
+            "passed": 13,
+            "failed": 0,
+            "total": 13
+          },
+          {
+            "file": "lab-preset-host.ts",
+            "phase": "P3",
+            "ok": true,
+            "passed": 18,
+            "failed": 0,
+            "total": 18
+          },
+          {
+            "file": "lab-panel.ts",
+            "phase": "L4",
+            "ok": true,
+            "passed": 14,
+            "failed": 0,
+            "total": 14
+          },
+          {
+            "file": "lab-duplicate-entry-id.ts",
+            "phase": "L3",
+            "ok": true,
+            "passed": 14,
+            "failed": 0,
+            "total": 14
+          },
+          {
+            "file": "lab-id-injection.ts",
+            "phase": "L3",
+            "ok": true,
+            "passed": 6,
+            "failed": 0,
+            "total": 6
+          },
+          {
+            "file": "lab-derived-entry-id.ts",
+            "phase": "L3",
+            "ok": true,
+            "passed": 13,
+            "failed": 0,
+            "total": 13
+          },
+          {
+            "file": "lab-auto-dedup.ts",
+            "phase": "L3",
+            "ok": true,
+            "passed": 11,
+            "failed": 0,
+            "total": 11
+          },
+          {
+            "file": "lab-adaptive-shim.ts",
+            "phase": "L3",
+            "ok": true,
+            "passed": 10,
+            "failed": 0,
+            "total": 10
+          },
+          {
+            "file": "lab-adaptive-runtime.ts",
+            "phase": "L3",
+            "ok": true,
+            "passed": 12,
+            "failed": 0,
+            "total": 12
+          },
+          {
+            "file": "lab-no-restart.ts",
+            "phase": "P3.6",
+            "ok": true,
+            "passed": 21,
+            "failed": 0,
+            "total": 21
+          }
+        ]
+      },
+      "coreE2e": {
+        "passed": 7,
+        "packages": 400,
+        "registrations": 5298,
+        "ownerVerification": "all",
+        "logSha256": "feabdc3911560730b45885ff78d4e61e57e5b445a2fd3781e65292fc33dd6039"
+      },
+      "shippedE2e": {
+        "status": "passed",
+        "passed": 7,
+        "logSha256": "d48041758d1e345a8046643c3c0a95bdebe99b59ea6726af947f52f10633f0f1"
+      },
+      "baseline": {
+        "sha256": "07c34f4cdf33f5159616f49d1bb23d4592f4900666f32a3d97a97ad782bcbf3e",
+        "slots": 53,
+        "services": 69,
+        "events": 66,
+        "tools": 63,
+        "artifact": "dsh-v0.1.3-alpha.1-baseline.json"
+      },
+      "loaderSourceBlob": "5ee20ef43eb849fad270174857d73666899d0a05"
+    }
+  ]
+}

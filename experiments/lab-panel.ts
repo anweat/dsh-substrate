@@ -17,13 +17,18 @@
  * Run: node --import tsx/esm lab-panel.ts
  */
 import { pathToFileURL } from 'node:url'
+import { existsSync } from 'node:fs'
 import { Context } from './vendor/cordis/src/index.ts'
-import { SlotRegistry } from './packages/client/runtime/src/client/slots.ts'
+// The slot service moved out of client-runtime in the alpha series.
+const slotsModule = existsSync(new URL('./packages/client/ui-renderer/src/client/registry.ts', import.meta.url))
+  ? './packages/client/ui-renderer/src/client/registry.ts'
+  : './packages/client/runtime/src/client/slots.ts'
+const { SlotRegistry } = await import(slotsModule)
 import WebServer from './packages/host/webserver/src/index.ts'
 import * as connection from './packages/client/connection/src/index.ts'
 
 const SUBSTRATE = pathToFileURL(process.env.DSH_SUBSTRATE ?? '../substrate/src').href
-const { definePanel, mountPanelHost, mountPanelClient, channelFor } = await import(`${SUBSTRATE}/panel.mjs`)
+const { definePanel, mountPanelHost, mountPanelClient, channelFor, panelClient } = await import(`${SUBSTRATE}/panel.mjs`)
 
 let ok = 0, fail = 0
 const check = (label: string, cond: boolean, detail?: string): void => {
@@ -42,9 +47,16 @@ async function main(): Promise<void> {
   const root = new Context()
   await root.plugin(SlotRegistry)
   await root.plugin(WebServer, { host: '127.0.0.1', port: 0 })
+  // Alpha Connection owns browser authentication. Use its upstream test
+  // credential provider, keeping all auth and transport code real.
+  if (connection.inject.includes('credentials')) {
+    const { provideBrowserCredentials } = await import('./packages/client/connection/tests/browser-credentials.ts')
+    provideBrowserCredentials(root)
+  }
   await root.plugin(connection, { trustedHosts: [] })
+  if (!root.get('connection')) throw new Error('Connection did not activate')
 
-  const slots = root.slots as SlotRegistry
+  const slots = root.slots as InstanceType<typeof SlotRegistry>
   slots.register(
     { name: 'root', children: { 'lab.panel.list': { kind: 'list', scope: 'root' } } } as never,
     Comp as never,
@@ -83,6 +95,18 @@ async function main(): Promise<void> {
 
   console.log('\n=== 后端半:通道确实落成真路由并应答 ===')
   const port = (root.webServer as { port: number }).port
+  const headers: Record<string, string> = { 'content-type': 'application/json', connection: 'close' }
+  const transport = root.connection as any
+  if (typeof transport.authenticatedUrl === 'function') {
+    const url = transport.authenticatedUrl(`http://127.0.0.1:${port}/`)
+    transport.authorizeIndex({ method: 'GET', url, headers: { host: `127.0.0.1:${port}` } }, {
+      writeHead(_status: number, values: Record<string, string>) {
+        if (values['set-cookie']) headers.cookie = values['set-cookie'].split(';')[0]
+      },
+      end() {},
+    })
+    if (!headers.cookie) throw new Error('Browser token exchange did not issue a cookie')
+  }
   {
     const panel = definePanel({
       pkg: '@a/plugin', name: 'data', slot: 'lab.panel.list', endpoints: ['list'],
@@ -94,12 +118,23 @@ async function main(): Promise<void> {
 
     const response = await fetch(`http://127.0.0.1:${port}${panel.channel}/list`, {
       method: 'POST',
-      headers: { 'content-type': 'application/json', connection: 'close' },
-      body: JSON.stringify({ type: 'client-request', rpcId: 1, payload: { hello: 'world' } }),
+      headers,
+      body: JSON.stringify({ type: 'client-request', rpcId: 'lab-1', method: 'list', payload: { hello: 'world' } }),
     })
     check('真 HTTP 请求打到了这条通道', response.status === 200, String(response.status))
     const body = await response.json() as { result?: { ok?: boolean } }
     check('应答是 RPC 信封', body.result !== undefined, JSON.stringify(body).slice(0, 120))
+    check('RPC 实际成功,不是 HTTP 200 的错误信封', body.result?.ok === true, JSON.stringify(body))
+    const client = panelClient(panel, (url: string, init: any) => fetch(`http://127.0.0.1:${port}${url}`, { ...init, headers }))
+    const value = await client.list({ hello: 'world' })
+    check('panelClient 经真实认证通道收回业务值', value.echo.hello === 'world')
+    if (headers.cookie) {
+      const denied = await fetch(`http://127.0.0.1:${port}${panel.channel}/list`, {
+        method: 'POST', headers: { 'content-type': 'application/json', connection: 'close' },
+        body: JSON.stringify({ type: 'client-request', rpcId: 'unsigned', method: 'list', payload: null }),
+      })
+      check('alpha 拒绝没有浏览器会话的请求', denied.status === 401, String(denied.status))
+    }
   }
 
   console.log('\n=== 撞车:不同包共存,同一个包仍然抛错 ===')
@@ -135,14 +170,14 @@ async function main(): Promise<void> {
     })
     const url = `http://127.0.0.1:${port}${panel.channel}/ping`
     const live = await fetch(url, {
-      method: 'POST', headers: { 'content-type': 'application/json', connection: 'close' },
-      body: JSON.stringify({ type: 'client-request', rpcId: 1, payload: null }),
+      method: 'POST', headers,
+      body: JSON.stringify({ type: 'client-request', rpcId: 'lab-1', method: 'ping', payload: null }),
     })
     check('挂载后可达', live.status === 200, String(live.status))
     await fiber.dispose()
     const gone = await fetch(url, {
-      method: 'POST', headers: { 'content-type': 'application/json', connection: 'close' },
-      body: JSON.stringify({ type: 'client-request', rpcId: 2, payload: null }),
+      method: 'POST', headers,
+      body: JSON.stringify({ type: 'client-request', rpcId: 'lab-2', method: 'ping', payload: null }),
     })
     check('插件卸载后通道消失 —— 归属正确才会这样',
       gone.status === 404, String(gone.status))

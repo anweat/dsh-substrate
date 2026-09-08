@@ -69,15 +69,15 @@ console.log('\n=== 报告本身 ===')
 console.log('\n=== 补丁只在有冲突时才提 ===')
 {
   const dirty = render(inspect([row('a', 'x'), row('a', 'y')]))
-  check('有冲突时给出可粘贴的 pnpm-workspace.yaml 片段',
-    /patchedDependencies:/.test(dirty) && /cordis-plugin-include@/.test(dirty), dirty.slice(-240))
-  // pnpm 11 stopped reading the `pnpm` field in package.json; pointing someone
-  // at the old location produces a WARN and a setting that silently does nothing.
-  check('位置写的是 pnpm-workspace.yaml,不是 package.json',
-    /pnpm-workspace\.yaml/.test(dirty) && !/package\.json/.test(dirty))
+  check('有冲突时交给外部修复命令',
+    /@anweat\/dsh-substrate@0\.1\.1 repair --apply/.test(dirty), dirty.slice(-360))
+  check('不再让用户猜 profile 或工作区路径',
+    !/<profile>|patchedDependencies:|package\.json/.test(dirty), dirty.slice(-360))
+  check('说清声明、重链和重启验证是三个阶段',
+    /声明/.test(dirty) && /pnpm install/.test(dirty) && /重启/.test(dirty), dirty.slice(-360))
 
   const clean = render(inspect([row('a', 'x'), row('b', 'y')]))
-  check('没冲突时不推销补丁', !/patchedDependencies/.test(clean), clean.slice(0, 120))
+  check('没冲突时不推销补丁', !/repair --apply/.test(clean), clean.slice(0, 120))
 }
 
 console.log('\n=== 三行抢同一个 id ===')

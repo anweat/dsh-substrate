@@ -1,5 +1,7 @@
 # 补丁
 
+当前精确支持 npm 发布的 `@deepseek-ai/dsh-app-boot@0.1.2-alpha.2`、`.3`、`.4`、`.5`，另保留独立 include `1.0.6` 和 `1.0.7` 的补丁。**alpha 发布包内嵌 Include，真实启动优先修复 app-boot；只修独立 include 不能证明启动已修好。** 修复器根据 DSH home 的实际依赖回退链接识别目标，不用源码版本代替安装版本。详见 [pnpm 插件验收矩阵](../docs/pnpm-plugin-compatibility.md)。下面 `1.0.7` 的清单仅是独立 include 示例，不用于替代 alpha 的 app-boot 补丁。
+
 ## 为什么是 `pnpm patch` 而不是别的形态
 
 自动去掉重复 entry id 这件事,必须发生在 `mountRootInclude` 之前——插件是被那一步挂载的,所以插件不可能是做这件事的人。剩下几种形态里,只有一种既能做到、又不会让人怀疑:
@@ -18,9 +20,38 @@
 - **锁版本**。目标包版本一变,pnpm 会**报错拒绝**,而不是像猴子补丁那样悄悄不生效
 - **没有 postinstall,没有运行时注入** —— 扫描器真正会标记的那两样,一样都没有
 
-## 用法
+## 投放点:必须是安装 DSH 的工作区
 
-补丁写在 **profile 目录的 `pnpm-workspace.yaml`** 里 —— 不是 `package.json`。pnpm 11 起,`package.json` 里的 `pnpm` 字段**不再被读取**,它会打印一条 WARN 然后忽略你的设置:
+本目录的补丁能干净应用、能让四个真包共存;真正困难的是把它交给**实际安装 loader 的 pnpm 工作区**,而不是看起来最像的 profile。
+
+`patchedDependencies` 只对声明它的那个工作区自己的依赖生效,而 loader 不是任何 profile 的依赖:
+
+```
+<home>/profiles/node_modules/@deepseek-ai/cordis-plugin-include
+  → 符号链接 → dsh 自身安装目录下的那一份
+```
+
+`healProfilesModuleFallback` 把 DSH 自己的依赖软链进 profiles 目录。`@deepseek-ai/cordis-plugin-include` 是 `@deepseek-ai/dsh` 的直接依赖,所以声明必须在**装 DSH 的那个工作区**里。
+
+实测:把声明写进 `<profile>/pnpm-workspace.yaml`,`pnpm install` **照常成功、零警告**,而补丁一行都没生效。这是最坏的一种失败——看起来完全正常。
+
+插件里的“启用补丁”开关已经被安装级修复事务取代。浏览器只读出真实路径和状态;外部 CLI 沿 fallback 链接定位工作区,无法证明目标时拒绝写入。
+
+## 推荐用法
+
+```bash
+dsh-substrate repair --apply
+```
+
+它依次完成目标定位、精确版本校验、确认、写入、`pnpm install` 和磁盘验证。结束后仍需重启 DSH,因为磁盘上的新 loader 不会替换当前进程已经加载的模块。撤销使用:
+
+```bash
+dsh-substrate repair --revert
+```
+
+## 手工等价步骤
+
+补丁写在**安装 DSH 的工作区**的 `pnpm-workspace.yaml` 里——不是 profile,也不是 `package.json`。pnpm 11 起,`package.json` 里的 `pnpm` 字段不再被读取,它会打印一条 WARN 然后忽略设置:
 
 ```
 [WARN] The "pnpm" field in package.json is no longer read by pnpm.
@@ -29,12 +60,12 @@
 正确的写法(实测于 pnpm 11.7.0,即 DSH 锁定的版本):
 
 ```yaml
-# <profile>/pnpm-workspace.yaml —— 追加,不要覆盖已有内容
+# <dsh-install-workspace>/pnpm-workspace.yaml —— 追加,不要覆盖已有内容
 patchedDependencies:
   '@deepseek-ai/cordis-plugin-include@1.0.7': patches/@deepseek-ai__cordis-plugin-include@1.0.7.patch
 ```
 
-把 `.patch` 放到 `<profile>/patches/` 下,然后 `pnpm install`。
+把 `.patch` 放到 `<dsh-install-workspace>/patches/` 下,在同一工作区运行 `pnpm install`,然后重启 DSH。
 
 DSH 自己也管理这个文件(它会写 `nodeLinker`、`autoInstallPeers`、`strictDepBuilds`),但它只替换这三行、其余内容原样保留,所以你加的这一段会活下来。
 
@@ -52,7 +83,7 @@ DSH 自己也管理这个文件(它会写 `nodeLinker`、`autoInstallPeers`、`s
 
 也就是说,**一个插件无法在安装时悄悄给宿主的依赖打补丁** —— 这是 pnpm 有意的设计,而且正是它让这件事可信的原因。一个装上就改别人依赖的插件,和一个被扫描器标记的插件,是同一个东西。
 
-补丁的采用必须是**根工作区的一次明确选择**。`dsh-substrate-check` 检测到冲突时会把这段 YAML 直接打出来,让它离你只有一次复制粘贴——但按下去的那一下,是你按的。
+补丁的采用必须是安装工作区的一次明确选择。外部 CLI 可以把多步手工操作缩成一条命令,但仍会展示目标并要求确认;浏览器插件不会从宿主进程内部执行安装。
 
 ## 这份补丁做什么
 

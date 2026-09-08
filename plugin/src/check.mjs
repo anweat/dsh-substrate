@@ -17,6 +17,7 @@
  * @module @anweat/dsh-substrate/check
  */
 import { readFileSync } from 'node:fs'
+import { PACKAGE_SPEC } from './package-spec.mjs'
 
 /** Rows in a composed config, flattened through groups. */
 function rowsOf(text) {
@@ -43,14 +44,6 @@ function rowsOf(text) {
 }
 
 const unquote = v => v.replace(/^['"]|['"]$/g, '')
-
-/**
- * The loader package the published patch targets, pinned to the version it was
- * generated against. pnpm refuses to apply a patch whose target moved, so the
- * pin is what makes an upgrade fail loudly instead of silently doing nothing.
- */
-const PATCH_TARGET = '@deepseek-ai/cordis-plugin-include@1.0.7'
-const PATCH_FILE = '@deepseek-ai__cordis-plugin-include@1.0.7.patch'
 
 /**
  * Find what will stop this composition from booting.
@@ -110,16 +103,16 @@ export function render({ fatal, rows }) {
     for (const option of f.fix) lines.push(`      · ${option}`)
     lines.push('')
   }
-  // The one-command version of the advice above. Printed rather than applied:
-  // pnpm reads `patchedDependencies` only from the workspace manifest, never
-  // from a dependency, so adopting it is the root workspace's decision and this
-  // command has no business making it for anyone. Copy-paste is the right
-  // amount of friction — one step away, but a step somebody takes on purpose.
-  lines.push('  想让这类冲突整体消失,可以给 loader 打一份补丁(58 行,纯文本 diff)。')
-  lines.push('  在 <profile>/pnpm-workspace.yaml 里追加:\n')
-  lines.push('    patchedDependencies:')
-  lines.push(`      '${PATCH_TARGET}': patches/${PATCH_FILE}\n`)
-  lines.push('  补丁与说明:https://github.com/anweat/dsh-substrate/tree/master/patches\n')
+  // Installation repair deliberately stays outside the running Host. The CLI
+  // resolves the actual DSH installation workspace, verifies the exact loader
+  // version, stages the declaration and asks pnpm to relink it. A new process
+  // then verifies what was loaded; none of those phases may be collapsed into
+  // an in-browser toggle or a guessed profile path.
+  lines.push('  如需让 loader 容忍重复 id,请在 DSH 进程外执行版本锁定的安装级修复:')
+  lines.push(`    npx --yes ${PACKAGE_SPEC} repair --apply\n`)
+  lines.push('  命令会定位真实安装工作区、写入修复声明并运行 pnpm install。')
+  lines.push('  完成后必须重启 DSH;只有新进程检测到修复代码才算验证通过。')
+  lines.push('  查看原理、限制与撤销方式:https://github.com/anweat/dsh-substrate/tree/master/patches\n')
   return lines.join('\n')
 }
 

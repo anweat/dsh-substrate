@@ -1,22 +1,24 @@
 /**
  * The substrate plugin, host half.
  *
- * It deliberately does very little. Everything it could usefully *decide* is
+ * It reports, and that is all it does. Everything it could usefully *decide* is
  * decided before it exists — a duplicate entry id is rejected during
- * `mountRootInclude`, with zero plugins mounted — so a row that promised to fix
- * that would be promising something its position rules out. That belongs to
- * `dsh-substrate-check`, which runs before boot.
+ * `mountRootInclude` with zero plugins mounted — so a row promising to fix that
+ * would be promising something its position rules out.
  *
- * What remains here is a setting and a report. The setting stages the loader
- * patch into the profile; the report says what tool contention a booted tree
- * can still see.
+ * It also exposes a read-only repair-status endpoint for the settings card.
+ * The browser never changes dependencies: `patch-target.mjs` follows the
+ * profile's fallback link to the workspace pnpm actually reads, and an
+ * external `dsh-substrate repair` process performs the version-locked install
+ * transaction. A restarted Host is the authority for final verification.
  *
  * @module @anweat/dsh-substrate
  */
 
 import z from '@deepseek-ai/schemastery'
-import { installSettingsSection } from '@deepseek-ai/dsh-settings'
-import { stage, unstage, isStaged } from './stage-patch.mjs'
+import { resolveDshHome } from '@deepseek-ai/dsh-home-paths'
+import { PATCH_TARGET, PATCH_FILE } from './stage-patch.mjs'
+import { registerPatchRpc } from './patch-rpc.mjs'
 
 export const name = 'dsh-substrate'
 export const inject = ['tools']
@@ -25,71 +27,68 @@ export const inject = ['tools']
 export const SETTINGS_NAMESPACE = 'dsh-substrate'
 
 /**
- * Config.
+ * The quiet window, in milliseconds, that stands in for "the tree has settled".
  *
- * `applyLoaderPatch` is off by default and stays off until someone turns it on:
- * it writes into the profile's workspace, and a plugin that did that on
- * installation would be doing the thing the switch exists to make visible.
+ * Deployment-varying rather than a constant: the window has to outlast the
+ * gap between two fibers activating, and that gap tracks machine speed and
+ * profile size. Too short and the report describes a half-built tree; too
+ * long and it lands after the reader has moved on.
  */
 export const Config = z.object({
-  applyLoaderPatch: z.boolean().default(false)
-    .description('把 loader 的 entry-id 去重补丁写进本 profile。写完需要跑一次安装才生效;关掉会原样撤回。'),
+  settleMs: z.natural().default(250).description('fiber 状态安静多久后出报告（毫秒）'),
 })
 
 /**
- * Tool names that are reserved outright and cannot be layered or shadowed.
- * Registering one throws regardless of scope, so a report that stayed quiet
- * about it would be describing a composition that cannot exist.
+ * Where the loader patch has to be declared. The card reads the same facts
+ * from the `status` endpoint; users do not need to find or edit this path.
+ */
+export const PATCH_DECLARATION = Object.freeze({
+  /** The patched package, pinned to the version the diff was generated against. */
+  target: PATCH_TARGET,
+  /** The diff's file name. */
+  file: PATCH_FILE,
+  /** The workspace that installs dsh — never a profile. */
+  where: '安装 dsh 的那个工作区的 pnpm-workspace.yaml',
+})
+
+/**
+ * Tool names reserved outright, which no layering can take. A report that
+ * stayed quiet about one would be describing a composition that cannot exist.
  */
 const RESERVED = Object.freeze(['run_code'])
 
 /**
- * Mount the setting and the reporter.
+ * Mount the reporter.
  *
  * @param {object} ctx Plugin context; needs `tools`.
- * @param {object} [config] Resolved config; `log`, `profileDir` and `settleMs` are test seams.
+ * @param {object} [config] Composition entry; `settleMs` is a {@link Config}
+ * field, `log` and `home` test seams that are not part of the schema.
  * @returns {void}
  */
 export function apply(ctx, config = {}) {
   const log = config.log ?? (line => { ctx.logger?.info?.(line) ?? console.log(line) })
-  const profileDir = config.profileDir ?? ctx.get?.('dshHomePath')?.('profiles')
 
-  /**
-   * Bring the profile in line with the setting.
-   *
-   * Staging is a file write, so it follows the setting rather than a schedule,
-   * and it never runs the installer — that command is printed for a person to
-   * run after reading what was written.
-   */
-  const reconcile = (wanted) => {
-    if (profileDir === undefined) return
-    try {
-      if (wanted === true) {
-        const result = stage(profileDir)
-        log(result.changed
-          ? `dsh-substrate: 已写入 ${result.manifest} 与 ${result.patch};跑一次 \`${result.install}\` 后重启生效`
-          : 'dsh-substrate: loader 补丁已在本 profile 就位')
-      } else if (isStaged(profileDir)) {
-        const result = unstage(profileDir)
-        if (result.changed) log(`dsh-substrate: 已撤回 loader 补丁;跑一次 \`${result.install}\` 让它离开 node_modules`)
-      }
-    } catch (error) {
-      // A failed write must be loud and must not stop the rest of the plugin:
-      // the report below is useful even when staging is impossible.
-      log(`dsh-substrate: loader 补丁未能写入 —— ${String(error?.message ?? error)}`)
-    }
-  }
+  // Registering the namespace is what puts the card on the plugin-settings tab.
+  // `ConfigurablePluginsTabController` renders the intersection of two ledgers:
+  // the namespaces the Host serves and the cards registered into
+  // `settings.plugin.item`. A card whose key no Host namespace matches is
+  // dropped with no error and no log line, so a browser half without this is a
+  // browser half that silently does not appear.
+  // Only the schema's own field goes into `base`; `log` is a test seam and
+  // would not survive validation.
+  const entry = config.settleMs === undefined ? {} : { settleMs: config.settleMs }
+  registerPatchRpc(ctx, config.home ?? resolveDshHome())
 
-  // With a settings service the switch lives in the settings document, so
-  // flipping it in the UI takes effect without a restart. Without one — a bare
-  // composition, or a test — the entry config is the only source there is, and
-  // `installSettingsSection` injects, so it simply never attaches.
-  let source = () => config
-  installSettingsSection(ctx, SETTINGS_NAMESPACE, Config, config, {
-    setSource: (current) => { source = current },
-    onChange: () => { reconcile(source()?.applyLoaderPatch === true) },
+  let source = () => entry
+  ctx.inject(['settings'], (sctx) => {
+    const scope = sctx.settings.register(SETTINGS_NAMESPACE, Config, {
+      base: entry,
+      // Re-read on every use below, so a committed change reaches the next
+      // report rather than waiting for a restart.
+      applies: 'live',
+    })
+    source = () => scope.get()
   })
-  reconcile(source()?.applyLoaderPatch === true)
 
   // Not in the body of `apply`: at apply time the tool registry is typically
   // empty, because this plugin activates the moment `tools` exists and the
@@ -124,7 +123,7 @@ export function apply(ctx, config = {}) {
   ctx.on('internal/status', () => {
     statusEvents += 1
     clearTimeout(settle)
-    settle = setTimeout(report, config.settleMs ?? 250)
+    settle = setTimeout(report, source().settleMs ?? 250)
     settle.unref?.()
   })
   ctx.effect(() => () => { clearTimeout(settle) }, 'dsh-substrate: settle timer')

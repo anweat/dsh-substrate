@@ -1,130 +1,183 @@
 /**
- * Binds the settings-document section this card edits.
+ * Form state for the card's one field.
  *
- * Two dependencies this deliberately does without.
- *
- * The card components `ui-settings-plugins` uses for its own three cards —
- * `PluginCard`, `ValueField`, `CardForm` — are internal to that package, so a
- * third-party card starts from the platform primitives and its own controller.
- *
- * And `@deepseek-ai/dsh-client-runtime` cannot be installed from npm today: its
- * published manifest depends on `@deepseek-ai/dsh-compact`, which is not in the
- * registry — the package appears to have been renamed to `dsh-compaction`. So
- * its `createSnapshotStore` is not imported and the few types it would have
- * supplied are declared here. For one boolean the store is twenty lines, and
- * not depending on an uninstallable package is worth more than sharing one.
+ * The card exists mainly to say where the loader patch has to be declared, but
+ * saying it is not a settings namespace. The namespace is what makes the card
+ * render at all: `ConfigurablePluginsTabController` publishes the intersection
+ * of the namespaces the Host serves and the cards registered into
+ * `settings.plugin.item`, so a card whose key no Host namespace matches is
+ * dropped silently. `settleMs` is that namespace's real content — the quiet
+ * window the boot report waits for, which tracks machine speed and profile
+ * size and therefore belongs to the deployment rather than to a constant.
  */
 
-/** The settings section this card owns; matches the host half's namespace. */
-export const NS = 'dsh-substrate'
-
-/**
- * The part of the harness `SettingsScope` this card uses.
- *
- * Declared locally for the reason above, and a subset by design: a method added
- * upstream is invisible here, and one removed upstream becomes a runtime
- * failure this cannot catch.
- */
-export interface BoundSettingsScope {
-  /** Current section value plus whether the document accepts writes. */
-  getSnapshot(): { value?: { applyLoaderPatch?: boolean }, writable?: boolean }
-  /** Observe snapshot replacements; returns the unsubscribe. */
+/** Reactive owner handle over one namespace, as `settingsScope.bind` returns it. */
+export interface Scope {
+  getSnapshot(): {
+    status: 'loading' | 'ready' | 'unavailable'
+    value: { settleMs?: number } | undefined
+    base: unknown
+    user: unknown
+    writable: boolean
+  }
   subscribe(listener: () => void): () => void
-  /** Queue one field write. */
   set(field: string, value: unknown): Promise<void>
+  unset(field: string): Promise<void>
+}
+
+/** One editable field as the card renders it. */
+export interface FieldState {
+  /** Staged text, or the stored value formatted, when nothing is staged. */
+  text: string
+  /** Whether a user layer exists for this field — presence, not value equality. */
+  overridden: boolean
+  /** Whether the staged text does not parse to a value the schema accepts. */
+  invalid: boolean
 }
 
 /** What the card renders. */
 export interface SubstrateCardState {
-  /** Whether the loader patch is staged into this profile. */
-  applyLoaderPatch: boolean
-  /** False while the settings document rejects writes, which disables the control. */
+  /** False while the Host has not served this namespace; the card renders nothing. */
+  available: boolean
+  /** Whether the settings document accepts writes at all. */
   writable: boolean
-  /** Set while a write is in flight, so the control cannot be double-fired. */
+  /** Whether a staged edit differs from what is stored. */
+  dirty: boolean
+  /** Whether the staged edit could not be saved as typed. */
+  invalid: boolean
+  /** Whether a save is in flight. */
   saving: boolean
-  /** Last write failure, shown inline rather than swallowed. */
-  error?: string
+  /** Whether the last save did not land. */
+  failed: boolean
+  /** The settle-window field. */
+  settleMs: FieldState
 }
 
-/** A snapshot source `useSyncExternalStore` accepts. */
-export interface CardStore {
-  /** Current state; the same reference until something changes. */
-  getSnapshot(): SubstrateCardState
-  /** Observe state replacements; returns the unsubscribe. */
-  subscribe(listener: () => void): () => void
-}
-
-/** The face the slot entry injects into the component. */
+/** The snapshot source the slot registration injects, plus its actions. */
 export interface SubstrateCardFace {
-  /** Observable card state. */
-  store: CardStore
-  /** Flip the switch and persist it. */
-  toggle: () => void
+  hooks: { substrateCard: { getSnapshot(): SubstrateCardState, subscribe(listener: () => void): () => void } }
+  /** Stage text for the settle-window field. */
+  edit: (text: string) => void
+  /** Stage a clear, so the field re-inherits the composition layer. */
+  reset: () => void
+  /** Write the staged edit. */
+  save: () => void
+  /** Drop the staged edit. */
+  discard: () => void
 }
 
-/**
- * A minimal snapshot store.
- *
- * `getSnapshot` returns an identical reference until something actually
- * changes: `useSyncExternalStore` compares by identity and loops forever if
- * handed a fresh object on every call.
- */
-function createStore(initial: SubstrateCardState) {
-  let state = initial
-  const listeners = new Set<() => void>()
-  return {
-    getSnapshot: (): SubstrateCardState => state,
-    subscribe: (listener: () => void): (() => void) => {
-      listeners.add(listener)
-      return () => { listeners.delete(listener) }
-    },
-    patch: (next: Partial<SubstrateCardState>): void => {
-      const merged: SubstrateCardState = { ...state, ...next }
-      const keys = Object.keys(merged) as (keyof SubstrateCardState)[]
-      if (!keys.some(key => merged[key] !== state[key])) return
-      state = merged
-      for (const listener of listeners) listener()
-    },
-  }
+/** The field's default, matching the Host schema's. */
+const DEFAULT_SETTLE_MS = 250
+
+/** Whether the schema would accept this as `settleMs`: a natural number. */
+function parse(text: string): number | undefined {
+  if (!/^\d+$/.test(text.trim())) return undefined
+  const value = Number(text.trim())
+  return Number.isSafeInteger(value) ? value : undefined
 }
 
-/** Read the section's boolean, defaulting to off. */
-function readValue(scope: BoundSettingsScope): boolean {
-  return scope.getSnapshot().value?.applyLoaderPatch === true
-}
+/** Projects the scope into card state and routes edits back through it. */
+export class SubstrateCardController {
+  private listeners = new Set<() => void>()
+  private snapshot: SubstrateCardState
+  private staged: { text: string, clear: boolean } | undefined
+  private saving = false
+  private failed = false
+  private readonly unsubscribe: () => void
 
-/**
- * Build the card's controller over a bound settings scope.
- *
- * @param scope - the scope bound to this plugin's namespace.
- * @returns the injected face plus its unsubscribe.
- */
-export function createSubstrateCard(scope: BoundSettingsScope): SubstrateCardFace & { dispose: () => void } {
-  const store = createStore({
-    applyLoaderPatch: readValue(scope),
-    writable: scope.getSnapshot().writable !== false,
-    saving: false,
-  })
-
-  // The Host may change the section underneath — another window, an edit to the
-  // settings file — so the card follows the document rather than its own last
-  // write.
-  const dispose = scope.subscribe(() => {
-    store.patch({ applyLoaderPatch: readValue(scope), writable: scope.getSnapshot().writable !== false })
-  })
-
-  const toggle = (): void => {
-    const current = store.getSnapshot()
-    if (current.saving || !current.writable) return
-    store.patch({ saving: true, error: undefined })
-    void scope.set('applyLoaderPatch', !current.applyLoaderPatch)
-      .catch((error: unknown) => {
-        // Surfaced in the card. A failed write that only reached the console
-        // would leave the switch looking like it had worked.
-        store.patch({ error: String((error as Error)?.message ?? error) })
-      })
-      .finally(() => { store.patch({ saving: false }) })
+  /** @param scope - the bound namespace handle. */
+  constructor(private readonly scope: Scope) {
+    this.snapshot = this.project()
+    this.unsubscribe = scope.subscribe(() => { this.publish() })
   }
 
-  return { store, toggle, dispose }
+  /**
+   * Build the face the slot registration injects.
+   * @returns the snapshot source and the card's actions.
+   */
+  inject(): SubstrateCardFace {
+    return {
+      hooks: {
+        substrateCard: {
+          getSnapshot: () => this.snapshot,
+          subscribe: (listener: () => void) => {
+            this.listeners.add(listener)
+            return () => { this.listeners.delete(listener) }
+          },
+        },
+      },
+      edit: (text: string) => { this.staged = { text, clear: false }; this.failed = false; this.publish() },
+      reset: () => {
+        this.staged = { text: this.formatted(this.baseValue()), clear: true }
+        this.failed = false
+        this.publish()
+      },
+      save: () => { void this.write() },
+      discard: () => { this.staged = undefined; this.failed = false; this.publish() },
+    }
+  }
+
+  /** Stop following the scope. */
+  dispose(): void { this.unsubscribe() }
+
+  private async write(): Promise<void> {
+    const staged = this.staged
+    if (this.saving || staged === undefined) return
+    const value = staged.clear ? undefined : parse(staged.text)
+    if (!staged.clear && value === undefined) return
+    this.saving = true
+    this.failed = false
+    this.publish()
+    let landed = true
+    try {
+      if (staged.clear) {
+        await this.scope.unset('settleMs')
+        landed = this.userLayer()?.settleMs === undefined
+      } else {
+        await this.scope.set('settleMs', value)
+        landed = this.userLayer()?.settleMs === value
+      }
+    } catch {
+      // Only a rejected or failed write reaches here; the controller reports it
+      // through `failed` and keeps the staged text so the edit is not lost.
+      landed = false
+    }
+    if (landed) this.staged = undefined
+    this.saving = false
+    this.failed = !landed
+    this.publish()
+  }
+
+  private publish(): void {
+    this.snapshot = this.project()
+    for (const listener of this.listeners) listener()
+  }
+
+  private userLayer(): { settleMs?: number } | undefined {
+    return this.scope.getSnapshot().user as { settleMs?: number } | undefined
+  }
+
+  private baseValue(): number | undefined {
+    return (this.scope.getSnapshot().base as { settleMs?: number } | undefined)?.settleMs
+  }
+
+  private formatted(value: number | undefined): string {
+    return String(value ?? DEFAULT_SETTLE_MS)
+  }
+
+  private project(): SubstrateCardState {
+    const view = this.scope.getSnapshot()
+    const stored = this.formatted(view.value?.settleMs)
+    const text = this.staged?.text ?? stored
+    const invalid = this.staged !== undefined && !this.staged.clear && parse(text) === undefined
+    return {
+      available: view.status === 'ready',
+      writable: view.writable,
+      dirty: this.staged !== undefined && (this.staged.clear || text !== stored),
+      invalid,
+      saving: this.saving,
+      failed: this.failed,
+      settleMs: { text, overridden: this.userLayer()?.settleMs !== undefined, invalid },
+    }
+  }
 }

@@ -1,0 +1,244 @@
+{
+  "checkedAt": "2026-09-07T07:41:04.016Z",
+  "artifact": "D:\\codeproject\\dsh-release-20260907\\final\\anweat-dsh-substrate-0.1.0.tgz",
+  "sha256": "73ca3434a7e860babdfbdf74b9e6e76ed621d6951912eb63f90c458d4b593d1f",
+  "versions": [
+    {
+      "version": "0.1.2-alpha.2",
+      "passed": true,
+      "installedCliVersion": "0.1.2-alpha.2",
+      "target": "@deepseek-ai/dsh-app-boot@0.1.2-alpha.2",
+      "edgeScenarios": [
+        "unique",
+        "flat",
+        "deep",
+        "sibling-groups",
+        "duplicate-groups",
+        "reserved-slug",
+        "same-module",
+        "disabled",
+        "missing-ids",
+        "insert",
+        "insert-addressing",
+        "insert-group",
+        "replace-group",
+        "early-group-insert-addressing",
+        "early-group-replace-addressing"
+      ],
+      "rpc": {
+        "ok": true,
+        "assertions": 11,
+        "target": "@deepseek-ai/dsh-app-boot@0.1.2-alpha.2"
+      },
+      "browser": {
+        "version": "0.1.2-alpha.2",
+        "ok": true,
+        "readyMs": 4123.229200000001,
+        "checks": [
+          "real Chrome card",
+          "validation",
+          "discard",
+          "save/reload",
+          "reset/reload",
+          "exact target",
+          "clipboard",
+          "no page errors"
+        ]
+      },
+      "lockfileSha256": "4da831df04dd8b7dfced5806f8f7103837014376898580f8050e589e66abfa3b",
+      "timingMs": {
+        "install": 14283.6288,
+        "repair": 7029.853800000001,
+        "reapply": 1738.8834000000024,
+        "revert": 6829.876,
+        "bootDisabledMedian": 183.5374,
+        "bootEnabledMedian": 192.5518,
+        "bootDeltaMedian": 9.014399999999995
+      },
+      "evidence": "D:\\codeproject\\dsh-release-20260907\\final-matrix\\0.1.2-alpha.2"
+    },
+    {
+      "version": "0.1.2-alpha.3",
+      "passed": true,
+      "installedCliVersion": "0.1.2-alpha.3",
+      "target": "@deepseek-ai/dsh-app-boot@0.1.2-alpha.3",
+      "edgeScenarios": [
+        "unique",
+        "flat",
+        "deep",
+        "sibling-groups",
+        "duplicate-groups",
+        "reserved-slug",
+        "same-module",
+        "disabled",
+        "missing-ids",
+        "insert",
+        "insert-addressing",
+        "insert-group",
+        "replace-group",
+        "early-group-insert-addressing",
+        "early-group-replace-addressing"
+      ],
+      "rpc": {
+        "ok": true,
+        "assertions": 11,
+        "target": "@deepseek-ai/dsh-app-boot@0.1.2-alpha.3"
+      },
+      "browser": {
+        "version": "0.1.2-alpha.3",
+        "ok": true,
+        "readyMs": 5273.537400000001,
+        "checks": [
+          "real Chrome card",
+          "validation",
+          "discard",
+          "save/reload",
+          "reset/reload",
+          "exact target",
+          "clipboard",
+          "no page errors"
+        ]
+      },
+      "lockfileSha256": "66052f2fc8e968d7c3c5d446bebbf61bef6674465bfea6a4f11d67a83f08f4a4",
+      "timingMs": {
+        "install": 13919.4919,
+        "repair": 6866.162300000004,
+        "reapply": 1841.542100000006,
+        "revert": 6745.6206999999995,
+        "bootDisabledMedian": 187.1956,
+        "bootEnabledMedian": 199.0019,
+        "bootDeltaMedian": 11.806299999999993
+      },
+      "evidence": "D:\\codeproject\\dsh-release-20260907\\final-matrix\\0.1.2-alpha.3"
+    },
+    {
+      "version": "0.1.2-alpha.4",
+      "passed": true,
+      "installedCliVersion": "0.1.2-alpha.4",
+      "target": "@deepseek-ai/dsh-app-boot@0.1.2-alpha.4",
+      "edgeScenarios": [
+        "unique",
+        "flat",
+        "deep",
+        "sibling-groups",
+        "duplicate-groups",
+        "reserved-slug",
+        "same-module",
+        "disabled",
+        "missing-ids",
+        "insert",
+        "insert-addressing",
+        "insert-group",
+        "replace-group",
+        "early-group-insert-addressing",
+        "early-group-replace-addressing"
+      ],
+      "rpc": {
+        "ok": true,
+        "assertions": 11,
+        "target": "@deepseek-ai/dsh-app-boot@0.1.2-alpha.4"
+      },
+      "browser": {
+        "version": "0.1.2-alpha.4",
+        "ok": true,
+        "readyMs": 4295.364899999997,
+        "checks": [
+          "real Chrome card",
+          "validation",
+          "discard",
+          "save/reload",
+          "reset/reload",
+          "exact target",
+          "clipboard",
+          "no page errors"
+        ]
+      },
+      "lockfileSha256": "e8c9a3d04e04087ee9022e7e01ffeba5c186c8180b379a0ac59dfd26238c4607",
+      "timingMs": {
+        "install": 13560.333500000008,
+        "repair": 7615.083700000003,
+        "reapply": 1758.7955999999976,
+        "revert": 6722.777800000011,
+        "bootDisabledMedian": 185.4789,
+        "bootEnabledMedian": 200.07819999999998,
+        "bootDeltaMedian": 14.599299999999971
+      },
+      "evidence": "D:\\codeproject\\dsh-release-20260907\\final-matrix\\0.1.2-alpha.4"
+    },
+    {
+      "version": "0.1.2-alpha.5",
+      "passed": true,
+      "installedCliVersion": "0.1.2-alpha.5",
+      "target": "@deepseek-ai/dsh-app-boot@0.1.2-alpha.5",
+      "edgeScenarios": [
+        "unique",
+        "flat",
+        "deep",
+        "sibling-groups",
+        "duplicate-groups",
+        "reserved-slug",
+        "same-module",
+        "disabled",
+        "missing-ids",
+        "insert",
+        "insert-addressing",
+        "insert-group",
+        "replace-group",
+        "early-group-insert-addressing",
+        "early-group-replace-addressing"
+      ],
+      "rpc": {
+        "ok": true,
+        "assertions": 11,
+        "target": "@deepseek-ai/dsh-app-boot@0.1.2-alpha.5"
+      },
+      "browser": {
+        "version": "0.1.2-alpha.5",
+        "ok": true,
+        "readyMs": 4063.095000000001,
+        "checks": [
+          "real Chrome card",
+          "validation",
+          "discard",
+          "save/reload",
+          "reset/reload",
+          "exact target",
+          "clipboard",
+          "no page errors"
+        ]
+      },
+      "lockfileSha256": "6f64bfa266cbdbcea0b89c513fd6353051f6237908aa5b178daefb6babd59c55",
+      "timingMs": {
+        "install": 21602.359299999996,
+        "repair": 7404.556100000016,
+        "reapply": 1874.7404000000097,
+        "revert": 6864.119200000016,
+        "bootDisabledMedian": 197.81449999999998,
+        "bootEnabledMedian": 208.66270000000003,
+        "bootDeltaMedian": 10.848200000000048
+      },
+      "evidence": "D:\\codeproject\\dsh-release-20260907\\final-matrix\\0.1.2-alpha.5"
+    }
+  ],
+  "unitAssertions": 415,
+  "published": true,
+  "method": "Windows x64, Node 24.14.0, pnpm 11.7.0; cached dependencies; five fresh-process paired boot samples per version; quiet-window wait excluded; no LLM requests",
+  "registry": {
+    "version": "0.1.0",
+    "dist": {
+      "integrity": "sha512-Rc2EE22p3+JrcbZ3387u9YamwN9elFMsxk61g2BoEmhTJYHv7bsz1XFRCdDCJN+jDzIgT3t3f/hVItVBvDAn9A==",
+      "shasum": "904621b1db8322234e45c678da05fa54258aa526",
+      "tarball": "https://registry.npmjs.org/@anweat/dsh-substrate/-/dsh-substrate-0.1.0.tgz",
+      "fileCount": 36,
+      "unpackedSize": 256772,
+      "signatures": [
+        {
+          "keyid": "SHA256:DhQ8wR5APBvFHLF/+Tc+AYvPOdTpcIDqOhxsBHRwC7U",
+          "sig": "MEQCIBlVuz42H/sv/X8fSNXhA35cIw8jd+BP6/7Inlj/5vdIAiBaFYIN2BbS5LBQ3SVCvBYCpalDURGxX7Nju51tZw5UrA=="
+        }
+      ]
+    }
+  },
+  "publishedTarballSha256": "73ca3434a7e860babdfbdf74b9e6e76ed621d6951912eb63f90c458d4b593d1f",
+  "publishedVerifiedAt": "2026-09-07T07:43:44.6526992Z"
+}

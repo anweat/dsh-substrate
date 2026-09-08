@@ -4,10 +4,12 @@
 
 ## 承诺
 
+安装级修复的当前目标与逐版本证据见 [pnpm 插件矩阵](../docs/pnpm-plugin-compatibility.md)。修复器优先识别 alpha 的 app-boot 内嵌加载器，只有精确支持的版本才写入随包补丁并执行 pnpm 重链；它属于本插件的外部 CLI，不是后续 profile 补丁层或网页写入操作。
+
 1. **`dsh-substrate-check` 会在启动前找出所有重复的 entry id**,列出是哪几行在抢,并说明为什么补丁层修不了它。
 2. **它不会假称能修。** 遇到补丁层解决不了的冲突,它报告、说明为什么、并列出谁能修,不发出一份照样起不来的补丁。
 3. **插件本体在 fiber 状态静默后才报告**,不在 `apply` 里 —— 那时注册表通常还是空的。
-4. **它不注册任何工具、路由或槽位**,所以它自己不会成为冲突的一方。
+4. **它不注册模型可见工具,也不抢占通用名称。** 它只增加命名空间为 `dsh-substrate` 的只读 loopback 状态端点和同名设置卡片槽位,用于把 Host 检测到的事实展示给浏览器。
 
 ## 明确不承诺
 
@@ -134,21 +136,46 @@ run_code   照样抛错 —— 自适应不给保留名开后门
 
 10 条断言打在真 `ToolRuntime` 上([`lab-adaptive-shim.ts`](../experiments/lab-adaptive-shim.ts))。**目录这一环整个不需要了。**
 
-## 补丁怎么装:一个开关,不是一次安装副作用
+## 修复怎么装:一笔安装级事务,不是设置开关
 
-`applyLoaderPatch` **默认关闭**。打开它,插件会:
+`patchedDependencies` 改的是 DSH 安装工作区里的 loader,不是插件自己的运行时设置。它有四个彼此独立的事实:
 
 ```
-写入   <profile>/patches/@deepseek-ai__cordis-plugin-include@1.0.7.patch
-追加   <profile>/pnpm-workspace.yaml 里一段带标记的 patchedDependencies
-打印   下一步该跑的那条安装命令
+准备声明 → pnpm 重新链接依赖 → 重启 DSH → 新进程验证
 ```
 
-关掉它,这两样**逐字撤回**——清单还原到写入前的字节,补丁文件删除。有断言钉住这一点,因为"可逆"如果只是说法,没人会相信这个开关。
+少任何一步都不能写成“已修复”。尤其“文件已写入”和“当前进程已加载”不是一回事:在 DSH 仍运行时完成 `pnpm install`,磁盘上的 loader 已经变化,内存里的旧模块仍会继续运行到重启。
 
-**它不会自己跑安装。** 写声明和装依赖是两件事,第二件是 `dsh plugin` 的活,由读过第一件写了什么的人来按。一个改设置就装软件的插件,恰恰是这个开关想避免的东西。
+因此浏览器卡片现在是**只读引导面**:它显示精确状态和一条可复制命令,不从正在运行的 DSH 里重装 DSH。真正的写入、`pnpm install` 与磁盘验证由外部命令完成:
 
-追加而不是重写清单,是因为那个文件是共用的:DSH 管着 `nodeLinker`、`autoInstallPeers`、`strictDepBuilds`,用户也可能加了自己的键。重写会把两边都悄悄抹掉。
+```bash
+dsh-substrate repair --apply
+dsh-substrate repair --revert
+```
+
+命令会重新定位目标、校验 loader 的精确版本、展示将操作的工作区并要求确认;版本或路径不匹配时,在写任何文件之前拒绝。
+
+### 写到哪里,是这件事唯一的难点
+
+第一版按钮写进 profile,成功、无警告、无报错、**毫无效果**。profile 不依赖 loader —— `healProfilesModuleFallback` 在 `$DSH_HOME/profiles/node_modules/` 下为 dsh 依赖闭包里的每个包建一条符号链接,指向它在 dsh 安装目录里的真实位置,Node 从任何 profile 往上找都会找到那里。所以 profile 跑的 loader 从来不是 profile 自己的。
+
+`patch-target.mjs` 顺着那条链接走到真实目录,再往上找到最外层 `node_modules` 的父目录 —— 那才是 pnpm 会读的工作区。对安装位置先分三类:
+
+```
+installed    找到了真实安装工作区          → 继续校验版本与事务状态
+source       loader 在源码 checkout 里     → 拒绝 patchedDependencies
+unresolved   找不到那条链接                → 拒绝写,并把找过的位置说出来
+```
+
+`source` 这一条是第二个坑,比第一个更隐蔽:**pnpm 不给工作区内的包打补丁**。从源码跑的 dsh(比如开发用的克隆)解析到的 loader 是 `vendor/include`,往那儿写一份声明,pnpm 照样接受、照样忽略 —— 和第一个 bug 一模一样,只是换了条路径。两种情况都没有任何可观察的区别,所以分类器按情况逐个钉死,而不是只测一条通路。
+
+安装目标确定后再分事务状态:`available`、`install-required`、`restart-required`、`verified`,以及撤销方向对应的两个等待态。追加而不是重写清单,是因为那个文件是共用的:DSH 管着 `nodeLinker`、`autoInstallPeers`、`strictDepBuilds`,用户也可能加了自己的键。重写会把两边都悄悄抹掉。撤销把清单还原到写入前的字节。
+
+## 设置里那一项:静默窗口
+
+卡片渲染出来的前提,是 Host 侧注册了同名的设置命名空间——插件设置页发布的是"Host 服务的命名空间"与"注册进 `settings.plugin.item` 的卡片"的**交集**,键对不上的卡片会被无声丢弃。
+
+`settleMs` 是这个命名空间的内容:启动报告在 fiber 状态安静多久之后出。机器越慢、profile 越大,需要的窗口越长;太短就会报告一棵没搭完的树。修复区不走设置文档,`/dsh-substrate` 也只向浏览器提供状态;安装动作只存在于外部 CLI。
 
 ### 为什么不能装上就自动生效
 
@@ -160,19 +187,22 @@ run_code   照样抛错 —— 自适应不给保留名开后门
 pnpm-workspace.yaml          已应用 ✓
 ```
 
-所以采用补丁必然是根工作区的一次明确动作。这不是要绕开的限制,而是这件事可信的原因。
+所以采用补丁必然是安装工作区的一次明确动作。这不是要绕开的限制,而是这件事可信的原因。CLI 缩短步骤,但不取消版本检查、改动展示和用户确认。
 
-## 两个命令,因为两类冲突发生在不同时刻
+## 三个入口,因为诊断和修复发生在不同时刻
 
 ```
 启动前   dsh-substrate-check <composed.yml>    重复 entry id —— 插件不可能报的那类
-启动后   插件在状态静默后报告                工具名重名、保留名占用
+进程外   dsh-substrate repair --apply          写声明、重链依赖、验证磁盘
+启动后   插件卡片与日志                        验证新进程真正加载了什么
 ```
 
 中间那道线不是设计取舍,是运行时的事实:重复 id 在任何 `apply` 之前就被拒绝了。
 
 ## 版本
 
-跟随 DSH 正式版本,不跟 alpha。当前对照 `dsh-v0.1.1-rc.2-5-g50854a854f`。
+运行时历史基线为 `dsh-v0.1.1-rc.2-5-g50854a854f`;分发补丁精确接受 loader `1.0.6`、`1.0.7`,由真实安装目标的版本选择,未知版本继续拒绝。两个 npm 发布包的运行时代码相同,均已通过真实 pnpm 应用/新进程行为/撤销验证。DSH alpha 的逐标签覆盖范围见 [适配记录](../docs/alpha-compatibility.md),不承诺未来 alpha 自动兼容。
+
+alpha Connection 将 Host/Origin 校验和浏览器会话认证统一应用到通道;旧版的第三参数 `authority: 'loopback'` 在 alpha 不再是独立边界。卡片状态继承 DSH 的已认证访问范围,始终没有安装写入 RPC。浏览器操作复用官方 Connection,不自建 cookie 或 RPC 信封。
 
 **这个插件的目标是变得不必要。** 上游只要让 entry id 可配置(或让 `disabled` 的行退出 id 检查),`check` 的主要用途就消失了;上游给客户端行加 rank、给令牌加导出面,这里对应的部分同样该删掉。衡量它的标准是**还剩多少**,不是还能做多少。详见 [ADAPTATION.md](../ADAPTATION.md)。

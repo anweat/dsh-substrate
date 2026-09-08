@@ -161,14 +161,15 @@ console.log('\n=== 调用方:路径只写一次 ===')
   const calls = []
   const client = panelClient(panel, async (url, init) => {
     calls.push({ url, body: init.body })
-    return { json: async () => ({ ok: true }) }
+    return { json: async () => ({ type: 'server-response', rpcId: JSON.parse(init.body).rpcId, result: { ok: true, value: 'reply' } }) }
   })
   check('每个 endpoint 一个方法', Object.keys(client).join(',') === 'list,save', Object.keys(client).join(','))
-  await client.list({ page: 1 })
+  check('返回解包后的业务结果', await client.list({ page: 1 }) === 'reply')
   check('URL 由声明拼出,组件不写路径', calls[0].url === '/a-p.main/list', calls[0].url)
-  check('载荷被序列化', calls[0].body === '{"page":1}', calls[0].body)
+  const first = JSON.parse(calls[0].body)
+  check('载荷与方法位于真实 RPC 信封内', first.type === 'client-request' && first.method === 'list' && first.payload.page === 1 && typeof first.rpcId === 'string', calls[0].body)
   await client.save()
-  check('省略载荷时发 null', calls[1].body === 'null', calls[1].body)
+  check('省略载荷时发 null,请求标识不重复', JSON.parse(calls[1].body).payload === null && JSON.parse(calls[1].body).rpcId !== first.rpcId, calls[1].body)
   check('未声明的 endpoint 不存在方法', client.nope === undefined)
 }
 

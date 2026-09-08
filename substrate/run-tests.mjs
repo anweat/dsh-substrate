@@ -20,6 +20,7 @@ const STATUS = join(here, 'STATUS.json')
 
 /** Registered suites: file plus the layer and contract it pins. */
 const SUITES = [
+  { file: '../plugin/test/alpha-target.spec.mjs', layer: '插件', pins: 'npm alpha 嵌入启动代码的目标选择、拒绝未知版本、状态与补丁更新' },
   { file: 'test/arbitrate.spec.mjs', layer: 'L1+L2', pins: '贡献归一化与裁决:五种 remedy、加法型不判争用、幂等、每包结局' },
   { file: 'test/emit-patch.spec.mjs', layer: 'L3', pins: '补丁发射:建组/重新安家/撤下前端半,并用 applyEntryPatches 镜像重放验证' },
   { file: 'test/scope-chain.spec.mjs', layer: 'L3', pins: 'scope 排链:传递顺序、环检测与降级、绑定顺序' },
@@ -29,6 +30,9 @@ const SUITES = [
   { file: 'test/tokens.spec.mjs', layer: 'L4', pins: '设计令牌契约:层与暗色翻转、三条规则、只有 dangling 自证是缺陷、声明发射' },
   { file: '../plugin/test/stage-patch.spec.mjs', layer: '插件', pins: '补丁投放:写进 pnpm-workspace.yaml 而非 package.json、不破坏他人内容、关闭后逐字还原、幂等' },
   { file: '../plugin/test/check.spec.mjs', layer: '插件', pins: '启动前检查:找出重复 entry id、被停的行仍算数、结论限定在自己看得见的范围' },
+  { file: '../plugin/test/patch-target.spec.mjs', layer: '插件', pins: '补丁投放的目标解析:装出来的 loader 定位到最外层工作区、源码 checkout 与找不到时一律拒绝写、写入撤销幂等' },
+  { file: '../plugin/test/repair.spec.mjs', layer: '插件', pins: '安装级修复事务:声明、依赖重链、进程重启与行为验证分态,版本不匹配先于写入拒绝' },
+  { file: '../plugin/test/controller.spec.mjs', layer: '插件', pins: '设置卡片表单:命名空间未被服务时不渲染、编辑保存往返、非法值不落盘、恢复默认清用户层、写入失败如实说' },
   { file: 'test/panel.spec.mjs', layer: 'L4', pins: '面板脚手架:路径从包名派生故不同包不撞、身份取自调用方 ctx、handler 与声明对齐、一个面板两笔贡献' },
 ]
 

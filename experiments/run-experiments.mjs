@@ -19,10 +19,12 @@ import { fileURLToPath } from 'node:url'
 import { DSH_ROOT, ECO, require_ } from '../paths.mjs'
 
 const here = dirname(fileURLToPath(import.meta.url))
-const STATUS = join(here, 'STATUS.json')
+const STATUS = process.env.DSH_EXPERIMENT_STATUS ?? join(here, 'STATUS.json')
 
 /** Registered experiments: file plus the question it settles. */
 const REGISTRY = [
+  { file: 'lab-nested-entry-id.ts', asks: '随包 ID 补丁是否覆盖嵌套 group 且保留每个真实挂载者', phase: 'L3' },
+  { file: 'lab-plugin-host.ts', asks: '可安装 Host 入口在真实 tools 服务上能否报告并随 fiber 卸载', phase: '插件' },
   { file: 'lab-isolate-proxy.ts', asks: 'isolate 是否给子树独立服务实例;代理能否转发到真实现', phase: 'P0' },
   { file: 'lab-real-registry.ts', asks: '真 ToolRuntime 下 scope 分层是否可行;链序是否即优先级', phase: 'P0' },
   { file: 'lab-loader-isolate.ts', asks: 'loader 的 isolate entry 选项能否纯配置声明拦截', phase: 'P0' },
@@ -32,7 +34,7 @@ const REGISTRY = [
   { file: 'lab-gate-ordering.ts', asks: '守门员先于争用者激活能否被保证', phase: 'P3' },
   { file: 'lab-gatekeeper-plugin.ts', asks: '守门员插件在真启动里 veto/report/clean 三态是否正确', phase: 'P3' },
   { file: 'lab-preset-host.ts', asks: '预设宿主经 standingKeyFor 建链后 agent 是否解析到裁决赢家', phase: 'P3' },
-  { file: 'lab-scale.ts', asks: '全语料 896 包同链、7164 工具真注册是否成立;开销多少', phase: 'P4' },
+  { file: 'lab-scale.ts', asks: '全语料 896 包同链、7164 工具真注册是否成立;开销多少', phase: 'P4', needsCorpus: true },
   { file: 'lab-client-priority.ts', asks: 'BootPluginRow 带 priority 后,前端争用能否从整包禁用变成槽位让位', phase: 'P3.5', needsPatch: 'bootpluginrow-priority.patch' },
   { file: 'lab-panel.ts', asks: '面板脚手架在真 SlotRegistry/WebServer/connection 上:身份是否跟随调用方 ctx、派生通道能否让同名面板共存', phase: 'L4' },
   { file: 'lab-duplicate-entry-id.ts', asks: '补丁层能否解决重复 entry id;disabled 与改 id 各自有没有用(源自 anweat/dsh-browser#11)', phase: 'L3' },
@@ -60,7 +62,7 @@ function checkoutUnderTest() {
   try {
     return {
       commit: git(['rev-parse', 'HEAD']),
-      describe: git(['describe', '--tags', 'HEAD']),
+      describe: git(['describe', '--tags', '--always', 'HEAD']),
       version: JSON.parse(readFileSync(join(root, 'package.json'), 'utf8')).version,
       dirty: git(['status', '--porcelain']) !== '',
     }
@@ -129,13 +131,18 @@ function patchApplied(name) {
 
 const skipped = []
 for (const e of [...targets]) {
+  if (e.needsCorpus && !existsSync(join(ECO, 'out', 'records.jsonl'))) {
+    targets.splice(targets.indexOf(e), 1)
+    skipped.push({ ...e, reason: '缺少未公开语料 out/records.jsonl;400 包 e2e 使用仓库自带语料单独验证' })
+    continue
+  }
   if (e.needsPatch === undefined) continue
   if (patchApplied(e.needsPatch)) continue
   targets.splice(targets.indexOf(e), 1)
   skipped.push(e)
 }
 for (const e of skipped) {
-  console.log(`跳过 ${e.file} —— 它测的是一个上游提案,需要先应用 experiments/${e.needsPatch}`)
+  console.log(`跳过 ${e.file} —— ${e.reason ?? `它测的是一个上游提案,需要先应用 experiments/${e.needsPatch}`}`)
 }
 
 const staged = []
@@ -153,7 +160,7 @@ process.on('exit', cleanup)
 
 const results = []
 for (const e of targets) {
-  const run = spawnSync(process.execPath, ['--import', 'tsx/esm', e.file], {
+  const run = spawnSync(process.execPath, ['--expose-internals', '--import', 'tsx/esm', e.file], {
     cwd: root, encoding: 'utf8', timeout: 180000,
     // Both absolute: the experiment runs with the checkout as its cwd, so a
     // relative default here would resolve beside the product instead of here.
@@ -163,7 +170,8 @@ for (const e of targets) {
   const passed = (out.match(/^\s*PASS\s/gm) ?? []).length
   const failed = (out.match(/^\s*FAIL\s/gm) ?? []).length
   const ok = run.status === 0 && failed === 0
-  results.push({ file: e.file, phase: e.phase, ok, passed, failed, total: passed + failed })
+  results.push({ file: e.file, phase: e.phase, ok, passed, failed, total: passed + failed,
+    ...(ok ? {} : { output: out, error: run.error?.message, exitCode: run.status }) })
   console.log(`${ok ? 'ok  ' : 'FAIL'}  ${String(passed).padStart(3)}/${String(passed + failed).padEnd(3)}  ${e.file}`)
   if (!ok) {
     // Only the failing lines and the tail: a full transcript per failure is
