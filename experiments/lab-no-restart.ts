@@ -109,6 +109,7 @@ async function browserChannel(): Promise<void> {
   root.set('clientModules', {
     graph: () => ({ rev: 'r1', entries: roster.map(id => ({ id, url: `/${id}.js`, rev: 'r1' })) }),
     clientPath: () => undefined,
+    artifactBaseline: () => undefined,
     rebuilt: () => {},
     onRebuilt: (cb: (id: string, rev: string) => void) => { fireRebuilt = cb; return () => { fireRebuilt = undefined } },
     onGraphChanged: (cb: () => void) => { fireGraphChanged = cb; return () => { fireGraphChanged = undefined } },

@@ -12,7 +12,7 @@ import yaml from 'js-yaml'
 
 const here = dirname(fileURLToPath(import.meta.url))
 const DSH = process.argv[2] ?? process.env.DSH_ROOT ?? ''
-const OUT = join(here, 'data/baseline.json')
+const OUT = process.env.DSH_BASELINE_OUT ?? join(here, 'data/baseline.json')
 mkdirSync(dirname(OUT), { recursive: true })
 
 /** Import a generated, import-free TS data module by transpiling it in memory. */
@@ -250,7 +250,7 @@ const baseline = {
 }
 writeFileSync(OUT, JSON.stringify(baseline, null, 2))
 
-console.log('baseline written -> data/baseline.json')
+console.log(`baseline written -> ${OUT}`)
 console.log(`  slots      ${baseline.slots.length}  (shadows-shipped-ui: ${baseline.slots.filter(s => s.replaceRisk !== 'none').length})`)
 console.log(`  services   ${baseline.services.length}`)
 console.log(`  events     ${baseline.events.length}`)

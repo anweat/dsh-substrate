@@ -1,7 +1,8 @@
 // Boot one composed config and report what happened, unwrapping the loader's
 // aggregate so the reason is visible rather than just the fact of failure.
 import { pathToFileURL } from 'node:url'
-import { join } from 'node:path'
+import { join, dirname } from 'node:path'
+import { readFileSync } from 'node:fs'
 import { DSH_ROOT, require_ } from '../paths.mjs'
 const requireRoot = () => require_(DSH_ROOT, 'DSH_ROOT', 'boot a harness checkout')
 const { boot } = await import(pathToFileURL(join(requireRoot(), 'packages/boot/app-boot/src/index.ts')).href)
@@ -32,12 +33,25 @@ try {
     for (const n of seen) if (!globalSet.has(n)) scopedOnly += 1
     for (const n of seen) if (globalSet.has(n)) shadowed += 1
   }
+  // A global tool of the same name must not hide a lost scoped registration.
+  // Check every corpus owner's description in exactly that owner's view.
+  const rows = JSON.parse(readFileSync(join(dirname(process.argv[2]), 'rows.json'), 'utf8'))
+  let verifiedRegistrations = 0
+  const missingRegistrations = []
+  for (const row of rows) {
+    const view = new Map(tools.schemas(ledger?.get(row.pkg)?.key).map(tool => [tool.name, tool.description]))
+    for (const name of row.tools) {
+      if (view.get(name) === `${name} (corpus stand-in for ${row.pkg})`) verifiedRegistrations++
+      else missingRegistrations.push({ pkg: row.pkg, name })
+    }
+  }
   console.log(JSON.stringify({
     ok: true, ms: Date.now() - t,
     entries: [...ctx.loader.entries()].length,
     globalTools: names.length,
     duplicateNames: dupes.length,
     scopes, scopedOnly, shadowed,
+    verifiedRegistrations, missingRegistrations,
     sample: names.slice(0, 6),
   }, null, 1))
   await ctx.fiber.dispose()

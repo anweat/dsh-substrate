@@ -39,6 +39,8 @@ input border 令牌存在时    rgb(220, 38, 38)
 
 也就是说,**插件配置填错时,错误文案用正文颜色渲染,失效输入框的边框也不是红的**。校验仍在工作,只是没有视觉指示。
 
+改法现成:`--dsw-alias-state-error-primary` 是仓库里已定义、且深浅色都会翻的那个错误别名(`design-platform.css:224` 浅色 `--dsw-static-red-600`,`:316` 深色 `--dsw-static-red-400`)。这三处换成它即可,不需要新增令牌。
+
 ## 全部 10 处
 
 | 令牌 | 位置 |
@@ -86,7 +88,7 @@ A `var()` reference to an undefined custom property with no fallback makes the d
 
 ### The heaviest: validation errors in the plugin settings panel are not red
 
-`--dsw-alias-label-error` has **no definition anywhere in the repository** and is used bare in three places (`ui-settings-plugins/fields.module.css:98,105` and `PluginCard.module.css:116`). Those exact rules in a browser, against the same rules with the token defined:
+`--dsw-alias-label-error` has **no definition anywhere in the repository** and is used bare in three places (`ui-settings-plugins/fields.module.css:98,105` and `PluginCard.module.css:116`). The fix needs no new token: `--dsw-alias-state-error-primary` is the defined error alias and does flip (`design-platform.css:224` light `--dsw-static-red-600`, `:316` dark `--dsw-static-red-400`). Those exact rules in a browser, against the same rules with the token defined:
 
 ```
 error text    today        rgb(26, 26, 26)     <- body black

@@ -63,7 +63,7 @@ export const name = shim.name
 export const apply = shim
 `)
 
-const base = readFileSync(join(repoRoot, 'examples/headless-agent/cordis.yml'), 'utf8')
+const base = readFileSync(join(workspace, 'base.cordis.yml'), 'utf8')
 const lines = [base, `# --- ${rows.length} corpus packages, ${needScope.size} of them scoped by the substrate ---`]
 
 for (const row of rows) {

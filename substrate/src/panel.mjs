@@ -80,7 +80,7 @@ export function channelFor(pkgName, panelName) {
  * @param {string} spec.slot Slot the panel's entry occupies.
  * @param {string[]} [spec.endpoints] Endpoint names served on the panel's channel.
  * @param {string} [spec.channel] Overrides the derived channel; must not be reserved.
- * @param {'loopback'|'trusted'} [spec.authority] Trust policy for the channel.
+ * @param {'loopback'|'trusted'} [spec.authority] Legacy RC channel policy; alpha uses Connection's authenticated deployment policy for every channel.
  * @returns {{ pkg: string, name: string, slot: string, channel: string, endpoints: string[], authority: string, entryId: string }} The resolved panel.
  */
 export function definePanel(spec) {
@@ -198,19 +198,27 @@ export function mountPanelClient(ctx, panel, component, options = {}) {
  * once, in the declaration, and both halves derive from it.
  *
  * @param {ReturnType<typeof definePanel>} panel Resolved panel.
- * @param {(url: string, init: object) => Promise<{ json: () => Promise<unknown> }>} fetchImpl Transport.
+ * @param {(url: string, init: object) => Promise<{ json: () => Promise<unknown> }>} fetchImpl Authenticated transport (browser fetch includes its same-origin cookie).
  * @returns {Record<string, (payload?: unknown) => Promise<unknown>>} One caller per declared endpoint.
  */
 export function panelClient(panel, fetchImpl) {
   const client = {}
+  let serial = 0
   for (const endpoint of panel.endpoints) {
     client[endpoint] = async payload => {
+      const rpcId = `${panel.entryId}:${++serial}`
       const response = await fetchImpl(`${panel.channel}/${endpoint}`, {
         method: 'POST',
+        credentials: 'same-origin',
         headers: { 'content-type': 'application/json' },
-        body: JSON.stringify(payload ?? null),
+        body: JSON.stringify({ type: 'client-request', rpcId, method: endpoint, payload: payload ?? null }),
       })
-      return response.json()
+      const body = await response.json()
+      if (body?.type !== 'server-response' || body.rpcId !== rpcId || typeof body.result?.ok !== 'boolean') {
+        throw new Error('panel: invalid RPC response')
+      }
+      if (!body.result.ok) throw new Error(body.result.error?.message ?? 'panel RPC failed')
+      return body.result.value
     }
   }
   return client

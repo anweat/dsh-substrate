@@ -8,6 +8,14 @@ node e2e/run.mjs 400      # ~40s
 node e2e/run.mjs 2768     # the whole tool-registering corpus, ~3.5 min
 ```
 
+Alpha compatibility: set `DSH_ROOT` to an isolated exact-tag checkout. The runner
+uses the relocated headless profile for alpha.1/.2, and the upstream base plus
+headless bundle for alpha.3 onward (startup/runner disabled to prevent model
+turns). `DSH_E2E_PROFILE=core` is a separate real Tools/Scope-only probe when
+full-profile native dependencies are unavailable; it must not be reported as
+a full profile pass. Every expected registration is checked by name AND owner
+description, including scoped tools which shadow a global tool.
+
 ## What is real and what is not
 
 **Real**: the profile (`examples/headless-agent/cordis.yml`, 25 shipped rows), the

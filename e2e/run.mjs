@@ -32,11 +32,15 @@ const check = (label, cond, detail) => {
   else { fail += 1; console.log(`  FAIL  ${label}${detail === undefined ? '' : ` — ${detail}`}`) }
 }
 
-const node = (script, ...args) => spawnSync(
+const node = (script, ...args) => {
+  const run = spawnSync(
   process.execPath,
-  ['--import', 'tsx/esm', join(here, script), ...args],
-  { cwd: repoRoot, encoding: 'utf8', maxBuffer: 64 * 1024 * 1024 },
-)
+  ['--expose-internals', '--import', 'tsx/esm', join(here, script), ...args],
+  { cwd: repoRoot, encoding: 'utf8', timeout: 180000, maxBuffer: 64 * 1024 * 1024 },
+  )
+  if (run.status !== 0) throw new Error(`${script} failed (${run.status}): ${run.error?.message ?? ''}\n${run.stderr}\n${run.stdout}`)
+  return run
+}
 
 const bootReport = (config) => {
   const run = node('boot-once.mjs', config)
@@ -50,13 +54,13 @@ console.log(`\n=== 生成 ${count} 个语料包 ===`)
 console.log(node('../e2e/generate.mjs', count).stdout.trim())
 
 console.log('=== 读出厂工具名(不猜) ===')
-const shipped = node('shipped-tools.mjs', join(repoRoot, 'examples/headless-agent/cordis.yml'), join(here, 'shipped-tools.json'))
+const shipped = node('shipped-tools.mjs', join(workspace, 'base.cordis.yml'), join(here, 'shipped-tools.json'))
 console.log(`  ${shipped.stdout.trim().split('\n')[0]}`)
 
 const rows = JSON.parse(readFileSync(join(workspace, 'rows.json'), 'utf8'))
 const registrations = rows.reduce((total, row) => total + row.tools.length, 0)
 
-console.log('\n=== A. 真出厂 profile + 这些插件,无底座 ===')
+console.log(`\n=== A. ${process.env.DSH_E2E_PROFILE === 'core' ? 'Tools/Scope core' : '出厂 profile'} + 这些插件,无底座 ===`)
 const before = bootReport(join(workspace, 'cordis.yml'))
 check('启动失败 —— 今天同装这些包就是这个结果', before.ok === false, JSON.stringify(before).slice(0, 200))
 check('失败原因全是工具撞名',
@@ -74,9 +78,9 @@ check('全局命名空间没有重名', after.duplicateNames === 0, String(after
 check('确实建了 scope', after.scopes > 0, String(after.scopes))
 check('落败者的工具进了 scope,没有被垫片吞掉',
   after.scopedOnly > 0, `scopedOnly=${after.scopedOnly}`)
-check('可达工具总数与注册量同量级 —— 没有静默丢弃',
-  after.globalTools + after.scopedOnly >= registrations * 0.5,
-  `${after.globalTools} 全局 + ${after.scopedOnly} scope 内,注册 ${registrations}`)
+check('逐包逐工具验证全部注册及归属 —— 没有静默丢弃',
+  after.verifiedRegistrations === registrations && after.missingRegistrations?.length === 0,
+  `verified=${after.verifiedRegistrations}/${registrations}, missing=${JSON.stringify(after.missingRegistrations?.slice(0, 3))}`)
 
 console.log(`\n        ${rows.length} 包 · ${registrations} 次注册`)
 console.log(`        ${after.entries} 条目 · ${after.globalTools} 全局工具 · ${after.scopes} scope · ${after.scopedOnly} scope 内工具`)

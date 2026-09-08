@@ -18,9 +18,9 @@
 
 ## 跟随哪个版本
 
-**跟正式版本,不跟 alpha。** 上游同时存在 rc 与 alpha 标签;alpha 里的机制随时会变,对着它验证等于给自己找活干。
+**正式基线与 alpha 验证矩阵分别维护。** 2026-09-07 按项目要求纳入已发布的全部 6 个 alpha 标签;不把某个标签通过推广成未来 alpha 均兼容。逐版本 commit、覆盖范围和限制见 [alpha 适配记录](docs/alpha-compatibility.md)。
 
-当前基线:
+历史机制基线（不是当前 alpha 安装范围）:
 
 ```
 dsh-v0.1.1-rc.2-5-g50854a854f      0.1.1-rc.2 之后 5 个提交
@@ -47,7 +47,7 @@ client/hmr                          0
 
 ```bash
 export DSH_ROOT=/path/to/a/dsh/checkout      # 独立克隆,不要用你的工作仓库
-git -C "$DSH_ROOT" checkout <最新的非 alpha 标签>
+git -C "$DSH_ROOT" checkout --detach <要验证的精确标签>
 node experiments/run-experiments.mjs          # 160 断言,对着真 harness
 node e2e/run.mjs 400                          # 7 断言,真启动
 npm run baseline -- "$DSH_ROOT"               # 重新生成已知组件目录
@@ -62,6 +62,12 @@ runner 会在开头打印它究竟对着哪个 checkout 跑,并写进 `STATUS.js
 - **`lab-client-priority` 测的是一个上游提案**,只在应用了 `experiments/bootpluginrow-priority.patch` 的 checkout 上有意义。runner 会检测补丁在不在:不在就跳过并说明原因,而不是报一条红线——红线会被读成"机制坏了",而真相是"这个 checkout 没打那个原型"。
 
 当前基线上的结果:**148 通过、0 失败、跳过 1**(打上补丁后 12/12)。
+
+上面是历史结果。当前 runner 还验证可安装 Host 入口;未提供未公开的 `out/records.jsonl` 时,全语料规模实验明确跳过,不会计为通过。runner 为 HMR 加入 `--expose-internals`,并通过 `DSH_EXPERIMENT_STATUS` 保存每个标签自己的结果。`DSH_BASELINE_OUT` 可将目录输出到版本专属文件,防止后一个标签覆盖前一个标签的证据。
+
+Windows 上可用 `DSH_E2E_PROFILE=core` 单独验证真实 Tools/Scope 内核加 400 个语料包;这是独立覆盖层,不是完整出厂 profile 启动。alpha.3 起完整 profile 来自上游 base/headless bundle,注册测试明确停用 startup/runner 两行,不发模型请求。完整 profile 的原生依赖失败必须另记,不得改写成内核组合不兼容,也不得因为 core 通过就宣称完整启动通过。
+
+安装修复额外运行 `node experiments/verify-published-loaders.mjs`:它在新建的临时目录中实际安装 loader、调用修复器运行 pnpm、在新 Node 进程中验证重复 id 行为,最后撤销并验证恢复。`git apply --check` 或模拟 installer 不能替代这一步。
 
 ### 用独立克隆
 

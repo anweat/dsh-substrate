@@ -15,9 +15,9 @@ const PLUGIN_ID = '@anweat/dsh-substrate'
 const CLIENT_EXTERNALS = [
   'react', 'react/jsx-runtime', 'react-dom', 'react-dom/client',
   '@deepseek-ai/cordis',
+  '@deepseek-ai/dsh-client-store',
   '@deepseek-ai/dsh-client-ui-slots',
   '@deepseek-ai/dsh-client-ui-primitives',
-  '@deepseek-ai/dsh-client-runtime/client',
 ] as const
 
 export default {
@@ -38,6 +38,18 @@ export default {
   },
   define: {
     'process.env.NODE_ENV': JSON.stringify(process.env.NODE_ENV ?? 'production'),
+  },
+  outputOptions: {
+    // The shell loads a plugin bundle by executing it and expecting it to hand
+    // back a factory: `client-modules` rejects any bundle that runs without
+    // calling `__ModuleLoader__.load`, and the externals above are resolved
+    // through the `require` injected here rather than through globals or an
+    // import map. Emitting a plain CJS file instead fails at boot with
+    // "loaded without registering" — measured, not guessed.
+    entryFileNames: 'client.js',
+    banner: `window.__ModuleLoader__.load({ id: ${JSON.stringify(PLUGIN_ID)}, factory: (require) => {`,
+    footer: 'return module.exports; } });',
+    intro: 'var module = { exports: {} }; var exports = module.exports;',
   },
   plugins: [
     {
