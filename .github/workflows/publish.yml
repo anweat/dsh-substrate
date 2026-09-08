@@ -1,0 +1,126 @@
+name: Publish npm package
+
+on:
+  push:
+    tags: ['v*']
+  workflow_dispatch:
+    inputs:
+      publish:
+        description: Publish the packed artifact (the ref must be a matching v* tag)
+        required: true
+        type: boolean
+        default: false
+
+permissions:
+  contents: write
+  id-token: write
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  pack:
+    name: Test, build, and pack
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+
+      - uses: actions/setup-node@v6
+        with:
+          node-version: '22.19.0'
+          cache: npm
+          cache-dependency-path: |
+            package-lock.json
+            plugin/package-lock.json
+
+      - name: Install root dependencies
+        run: npm ci
+
+      - name: Install plugin dependencies
+        run: npm ci
+        working-directory: plugin
+
+      - name: Run tests
+        run: npm test
+
+      - name: Build plugin
+        run: npm run build
+        working-directory: plugin
+
+      - name: Verify release version
+        shell: bash
+        run: |
+          package_version=$(node -p "require('./plugin/package.json').version")
+          if [[ "$GITHUB_REF_NAME" == v* ]]; then
+            tag_version="${GITHUB_REF_NAME#v}"
+            if [[ "$tag_version" != "$package_version" ]]; then
+              echo "::error::tag v$tag_version does not match plugin/package.json version $package_version" >&2
+              exit 1
+            fi
+          elif [[ "${{ inputs.publish }}" == "true" ]]; then
+            echo "::error::publishing requires a v* tag ref" >&2
+            exit 1
+          fi
+
+      - name: Pack plugin
+        run: npm pack ./plugin --pack-destination dist
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: npm-tarball
+          path: dist/*.tgz
+          if-no-files-found: error
+          retention-days: 7
+
+  publish:
+    name: Publish to npm
+    if: github.event_name == 'push' || inputs.publish
+    needs: pack
+    runs-on: ubuntu-24.04
+    environment: npm-publish
+    concurrency:
+      group: substrate-npm-publish
+      cancel-in-progress: false
+    permissions:
+      contents: read
+      id-token: write
+    steps:
+      - uses: actions/setup-node@v6
+        with:
+          node-version: '22.19.0'
+          registry-url: https://registry.npmjs.org
+
+      - name: Use an npm CLI with trusted-publishing support
+        run: npm install --global npm@^11.5.1
+
+      - uses: actions/download-artifact@v4
+        with:
+          name: npm-tarball
+          path: dist
+
+      - name: Publish exact tarball
+        run: npm publish ./dist/*.tgz --provenance --access public
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+
+  release:
+    name: Create GitHub release
+    if: github.event_name == 'push'
+    needs: pack
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: npm-tarball
+          path: dist
+
+      - uses: softprops/action-gh-release@v2
+        with:
+          files: dist/*.tgz
+          generate_release_notes: true
