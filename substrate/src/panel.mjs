@@ -9,12 +9,12 @@
  *
  * Two facts about the runtime decide this module's design.
  *
- * First, **no backend seam is additive**. `webServer.register` throws on a
- * duplicate path; `connection.rpc.handle` becomes a prefix route and throws the
- * same way; `intercept('/api')` holds one interceptor for the whole process.
- * A path is therefore not a name a plugin may choose freely, and deriving it
- * from the package name is what makes a collision between two distinct packages
- * impossible rather than merely unlikely.
+ * First, **no backend seam is additive**. Connection's exact Fetch registry
+ * throws on a duplicate path. A path is therefore not a name a plugin may
+ * choose freely, and deriving it from the package name is what makes a
+ * collision between two distinct packages impossible rather than merely
+ * unlikely. Exact routes join the shared authenticated `/api` transport, so
+ * they also survive DSH 0.1.5 making WebServer an optional Connection carrier.
  *
  * Second, **identity comes from the calling fiber**. `SlotRegistry` stamps
  * `registrant` from `this.ctx.fiber.name` and `connection.rpc` captures
@@ -66,6 +66,24 @@ export function channelFor(pkgName, panelName) {
   if (pkg === '') throw new Error(`panel: package name ${JSON.stringify(pkgName)} yields no path segment`)
   if (panel === '') throw new Error(`panel: panel name ${JSON.stringify(panelName)} yields no path segment`)
   return `/${pkg}${CHANNEL_JOIN}${panel}`
+}
+
+/**
+ * Derive the exact shared-transport route for one endpoint.
+ *
+ * `/api` accepts one suffix segment. The panel namespace and endpoint use `.`
+ * separators so no plugin claims the process-wide channel or an overlapping
+ * prefix route.
+ *
+ * @param {ReturnType<typeof definePanel>} panel Resolved panel.
+ * @param {string} endpoint Declared endpoint.
+ * @returns {string} Exact Fetch route under `/api`.
+ */
+export function routeFor(panel, endpoint) {
+  if (!panel.endpoints.includes(endpoint)) {
+    throw new Error(`panel ${panel.entryId}: endpoint ${JSON.stringify(endpoint)} is not declared`)
+  }
+  return `/api/${panel.channel.slice(1)}.${endpoint}`
 }
 
 /**
@@ -148,7 +166,7 @@ export function contributionsOfPanel(panel, arityOf = () => 'slot-list') {
  * @param {object} ctx The plugin's Context, with `connection` injected.
  * @param {ReturnType<typeof definePanel>} panel Resolved panel.
  * @param {Record<string, (payload: unknown) => unknown>} handlers Endpoint name to handler.
- * @returns {() => Promise<void>} Disposer removing the channel.
+ * @returns {() => Promise<void>} Disposer removing every exact endpoint route.
  */
 export function mountPanelHost(ctx, panel, handlers) {
   const declared = new Set(panel.endpoints)
@@ -162,17 +180,62 @@ export function mountPanelHost(ctx, panel, handlers) {
       throw new Error(`panel ${panel.entryId}: endpoint ${JSON.stringify(name)} has no handler`)
     }
   }
-  return ctx.connection.rpc.handle(
-    panel.channel,
-    async (endpoint, payload) => {
-      const handler = handlers[endpoint]
-      // The connection rejects unknown endpoints before dispatch; this covers
-      // a handler map mutated after mount, which nothing else would catch.
-      if (handler === undefined) return { ok: false, error: { code: 'unknown-endpoint', message: endpoint } }
-      return { ok: true, value: await handler(payload) }
-    },
-    { authority: panel.authority },
-  )
+  const disposers = []
+  try {
+    for (const endpoint of declared) {
+      const path = routeFor(panel, endpoint)
+      const dispose = ctx.connection.fetch.register({
+        path,
+        methods: ['POST'],
+        requestBody: 'buffered',
+        fetch: async request => {
+          const contentType = request.headers.get('content-type')?.split(';', 1)[0]?.trim().toLowerCase()
+          if (contentType !== 'application/json') {
+            return new Response('content type must be application/json', { status: 415 })
+          }
+          let body
+          try {
+            body = await request.json()
+          } catch {
+            return new Response('body is not JSON', { status: 400 })
+          }
+          const rpcId = typeof body === 'object' && body !== null && typeof body.rpcId === 'string'
+            ? body.rpcId
+            : 'invalid-request'
+          if (typeof body !== 'object' || body === null || body.type !== 'client-request'
+            || body.method !== endpoint) {
+            return Response.json({
+              type: 'server-response', rpcId,
+              result: { ok: false, error: { code: 'gateway/bad-request', message: 'invalid panel request', details: {} } },
+            })
+          }
+          const handler = handlers[endpoint]
+          if (handler === undefined) {
+            return Response.json({
+              type: 'server-response', rpcId,
+              result: { ok: false, error: { code: 'unknown-endpoint', message: endpoint, details: {} } },
+            })
+          }
+          try {
+            return Response.json({
+              type: 'server-response', rpcId,
+              result: { ok: true, value: await handler(body.payload) },
+            })
+          } catch (error) {
+            return Response.json({
+              type: 'server-response', rpcId,
+              result: { ok: false, error: { code: 'gateway/bad-request', message: String(error instanceof Error ? error.message : error).slice(0, 500), details: {} } },
+            })
+          }
+        },
+      })
+      disposers.push(dispose)
+    }
+  } catch (error) {
+    for (const dispose of disposers.reverse()) void dispose()
+    throw error
+  }
+  return async () => { await Promise.all(disposers.map(dispose => dispose())) }
 }
 
 /**
@@ -207,7 +270,7 @@ export function panelClient(panel, fetchImpl) {
   for (const endpoint of panel.endpoints) {
     client[endpoint] = async payload => {
       const rpcId = `${panel.entryId}:${++serial}`
-      const response = await fetchImpl(`${panel.channel}/${endpoint}`, {
+      const response = await fetchImpl(routeFor(panel, endpoint), {
         method: 'POST',
         credentials: 'same-origin',
         headers: { 'content-type': 'application/json' },

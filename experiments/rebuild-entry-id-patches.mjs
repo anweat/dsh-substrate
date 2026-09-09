@@ -1,5 +1,5 @@
 /** Regenerate all shipped patches from pristine npm pack extraction directories. */
-import {readFileSync,writeFileSync,mkdirSync} from 'node:fs'
+import {existsSync,readFileSync,writeFileSync,mkdirSync} from 'node:fs'
 import {spawnSync} from 'node:child_process'
 import {resolve} from 'node:path'
 const repo=resolve(import.meta.dirname,'..'), artifacts=process.argv[2], loaders=process.argv[3]
@@ -7,8 +7,18 @@ const old=readFileSync(`${repo}/patches/@deepseek-ai__cordis-plugin-include@1.0.
 const additions=old.split(/\r?\n/).filter(l=>l.startsWith('+')&&!l.startsWith('+++')).map(l=>l.slice(1)).join('\n')
 const fn=additions.match(/function resolveDuplicateEntryIds\(data, log\) \{[\s\S]*?\n\}/)?.[0]
 if(!fn)throw Error('Missing resolver')
-for(const [name,versions] of [['cordis-plugin-include',['1.0.6','1.0.7']],['dsh-app-boot',['0.1.2-alpha.2','0.1.2-alpha.3','0.1.2-alpha.4','0.1.2-alpha.5']]])for(const version of versions){
- const input=name==='dsh-app-boot'?`${artifacts}/build-${version}`:`${loaders}/${version}`
+const requested=new Set((process.env.DSH_PATCH_VERSIONS??'').split(',').map(value=>value.trim()).filter(Boolean))
+const matrix=[
+ ['cordis-plugin-include',['1.0.6','1.0.7']],
+ ['dsh-app-boot',['0.1.2-alpha.2','0.1.2-alpha.3','0.1.2-alpha.4','0.1.2-alpha.5','0.1.2-rc.1','0.1.3-alpha.2','0.1.5-alpha.1']],
+]
+for(const [name,versions] of matrix)for(const version of versions){
+ if(requested.size>0&&!requested.has(version))continue
+ const candidates=name==='dsh-app-boot'
+  ? [`${artifacts}/build-${version}`,`${artifacts}/${version}`]
+  : [`${loaders}/${version}`]
+ const input=candidates.find(candidate=>existsSync(`${candidate}/package/lib/index.js`))
+ if(!input)throw Error(`Missing pristine npm extraction for ${name}@${version}: ${candidates.join(', ')}`)
  const original=readFileSync(`${input}/package/lib/index.js`,'utf8').replaceAll('\r\n','\n')
  const hook=/\tapplyPatches\(data, patches\) \{\n\t\treturn applyEntryPatches\(data, patches, \(message, \.\.\.args\) => \{\n\t\t\tthis.ctx.root.logger\?\.\("loader"\).warn\(message, \.\.\.args\);\n\t\t\}\);\n\t\}/
  if(!hook.test(original))throw Error(`Unexpected layout ${name}@${version}`)

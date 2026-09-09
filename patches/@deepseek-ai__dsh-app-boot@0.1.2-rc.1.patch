@@ -1,0 +1,75 @@
+diff --git a/lib/index.js b/lib/index.js
+index fbce05c..a0cc59c 100644
+--- a/lib/index.js
++++ b/lib/index.js
+@@ -56,6 +56,37 @@ function retryableWriteError(error) {
+ * @param warn - sink for skipped-patch diagnostics (printf-style, `%C` = code).
+ * @returns a detached entry list with every applicable patch applied.
+ */
++function resolveDuplicateEntryIds(data, log) {
++	// Groups share their containing EntryTree's id namespace.
++	function* rows(entries) {
++		for (const row of entries) {
++			yield row;
++			if (row.group && Array.isArray(row.config)) yield* rows(row.config);
++		}
++	}
++	const occupied = new Set([...rows(data)].map(row => row.id));
++	const seen = new Set();
++	for (const row of rows(data)) {
++		if (row.id === undefined) continue;
++		if (!seen.has(row.id)) {
++			seen.add(row.id);
++			continue;
++		}
++		if (typeof row.name !== "string") continue;
++		const base = row.name.replace(/^@/, "").replace(/[^a-zA-Z0-9]+/g, "-").replace(/^-|-$/g, "").toLowerCase();
++		if (base === "") continue;
++		let derived = base;
++		let ordinal = 2;
++		while (occupied.has(derived)) {
++			derived = `${base}-${ordinal}`;
++			ordinal += 1;
++		}
++		log(`entry id "${row.id}" already taken; ${row.name} mounted as "${derived}"`);
++		row.id = derived;
++		seen.add(derived);
++		occupied.add(derived);
++	}
++}
+ function applyEntryPatches(data, patches, warn) {
+ 	data = structuredClone(data);
+ 	if (!patches?.length) return data;
+@@ -198,9 +229,29 @@ var Include = class extends EntryTree {
+ 		};
+ 	}
+ 	applyPatches(data, patches) {
+-		return applyEntryPatches(data, patches, (message, ...args) => {
+-			this.ctx.root.logger?.("loader").warn(message, ...args);
+-		});
++		// dsh-substrate entry-id repair v4
++		const log = message => this.ctx.root.logger?.("loader").info(message);
++		const warn = (message, ...args) => this.ctx.root.logger?.("loader").warn(message, ...args);
++		let result = structuredClone(data);
++		resolveDuplicateEntryIds(result, log);
++		// Normalize each overlay before the next overlay can address its rows.
++		for (const patch of patches ?? []) {
++			const next = structuredClone(patch);
++			// Existing claimants retain their IDs even when a group is earlier in tree order.
++			if (next.insert) resolveDuplicateEntryIds([...result, ...next.insert], log);
++			else if (Array.isArray(next.config)) {
++				const reserved = structuredClone(result);
++				const find = rows => { for (const row of rows) { if (row.id === next.id) return row; if (row.group && Array.isArray(row.config)) { const found = find(row.config); if (found) return found; } } };
++				const target = find(reserved);
++				if (target?.group && (!next.name || next.name === target.name)) {
++					target.config = [];
++					resolveDuplicateEntryIds([...reserved, ...next.config], log);
++				}
++			}
++			result = applyEntryPatches(result, [next], warn);
++			resolveDuplicateEntryIds(result, log);
++		}
++		return result;
+ 	}
+ 	async *[Service.init]() {
+ 		let candidate;

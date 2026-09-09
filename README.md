@@ -30,7 +30,7 @@ booted for real, 2,768 packages · 11,911 tool registrations
 
 DSH 还没有正式版本。它今天缺的东西——客户端槽位的 rank、令牌的导出面、名册变更的转发——都是官方迟早会自己补上的,每补上一样这里就该少一块。衡量标准不是功能多完整,而是**还剩多少没被上游吸收**。全部落地时,这里应该只剩测量管线。
 
-运行时历史研究基线为 `dsh-v0.1.1-rc.2-5-g50854a854f`;安装修复按 loader 精确版本选择 `1.0.6` 或 `1.0.7` 补丁。已逐标签检查 6 个 alpha 构建,覆盖范围及完整启动限制见 [alpha 适配记录](docs/alpha-compatibility.md)。机制证据与安装兼容范围分别记录;重验和删除已被上游吸收的兜底代码的原则见 [ADAPTATION.md](ADAPTATION.md)。
+运行时历史研究基线为 `dsh-v0.1.1-rc.2-5-g50854a854f`;安装修复按 loader 精确版本选择 `1.0.6`、`1.0.7` 或已审计的 app-boot 补丁。alpha.5 之后的发布适配见 [后续版本验收](docs/post-alpha5-compatibility.md)，早期逐标签覆盖及完整启动限制见 [alpha 适配记录](docs/alpha-compatibility.md)。机制证据与安装兼容范围分别记录;重验和删除已被上游吸收的兜底代码的原则见 [ADAPTATION.md](ADAPTATION.md)。
 
 ## Layout
 
@@ -56,19 +56,19 @@ This split is intentional: a plugin already running inside DSH must not reinstal
 Install the compatibility card into the DSH Web profile, then restart DSH:
 
 ```powershell
-dsh plugin --profile web add @anweat/dsh-substrate@^0.1.1
+dsh plugin --profile web add @anweat/dsh-substrate@^0.1.2
 ```
 
 The card reports the exact installation and repair state. Run the write transaction outside DSH, then restart DSH again so a new Host can verify the loaded code:
 
 ```powershell
-npx --yes @anweat/dsh-substrate@0.1.1 repair --home "<DSH_HOME>"
-npx --yes @anweat/dsh-substrate@0.1.1 repair --home "<DSH_HOME>" --apply --yes
+npx --yes @anweat/dsh-substrate@0.1.2 repair --home "<DSH_HOME>"
+npx --yes @anweat/dsh-substrate@0.1.2 repair --home "<DSH_HOME>" --apply --yes
 ```
 
-To undo it, run `npx --yes @anweat/dsh-substrate@0.1.1 repair --home "<DSH_HOME>" --revert --yes`, then restart DSH. Version `0.1.0` requires `--legacy-peer-deps` immediately after `--yes` when invoked through `npx`; `0.1.1` removes that workaround.
+To undo it, run `npx --yes @anweat/dsh-substrate@0.1.2 repair --home "<DSH_HOME>" --revert --yes`, then restart DSH. Version `0.1.0` requires `--legacy-peer-deps` immediately after `--yes` when invoked through `npx`; later releases remove that workaround.
 
-The repair supports `@deepseek-ai/cordis-plugin-include@1.0.6` and `1.0.7`, plus `@deepseek-ai/dsh-app-boot@0.1.2-alpha.2` through `alpha.5`. It fixes duplicate loader entry IDs. Service-name and tool-name collisions occur later in boot and still require host composition with service realms and tool scopes. See the packaged [installation guide](plugin/README.md) and the [browser coexistence verification](docs/browser-issue11-verification.md).
+The repair supports `@deepseek-ai/cordis-plugin-include@1.0.6` and `1.0.7`, plus exact `@deepseek-ai/dsh-app-boot` builds `0.1.2-alpha.2` through `alpha.5`, `0.1.2-rc.1`, `0.1.3-alpha.2`, and `0.1.5-alpha.1`. It fixes duplicate loader entry IDs. Service-name and tool-name collisions occur later in boot and still require host composition with service realms and tool scopes. See the packaged [installation guide](plugin/README.md), [post-alpha.5 acceptance](docs/post-alpha5-compatibility.md), and [browser coexistence verification](docs/browser-issue11-verification.md).
 
 ## Develop
 

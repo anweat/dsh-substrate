@@ -1,5 +1,7 @@
 # 实测记录
 
+2026-09-09 的 [alpha.5 后续版本验收](../docs/post-alpha5-compatibility.md) 使用 npm 精确版本 `0.1.2-rc.1`、`0.1.3-alpha.2`、`0.1.5-alpha.1` 分别安装打包插件，并完成真实启动、CLI apply/revert、15 组重复 ID、5 组配对计时、Host/设置/RPC 与重启后 verified 闭环。Git tag `0.1.3-alpha.1` 没有对应 npm app-boot 包，因此只作源码对照。另在官方 `dsh-v0.1.5-alpha.1` 源码上通过 207 条机制断言，确认工具 scope/自适应运行时仍有效，并把 panel 后端迁到共享认证 `/api` 的精确 Fetch 路由。
+
 2026-09-07 的交付验收以 [真实 pnpm 插件矩阵](../docs/pnpm-plugin-compatibility.md) 为准：npm alpha.2～.5 的 app-boot 内嵌 Include，需修复实际启动包；四版安装后的 CLI、Host、设置、RPC 与客户端状态控制器均已验证。下面的源码/独立 include 测试保留为分层证据，不再作为 npm 全插件支持的替代。
 
 2026-09-07 对 [dsh-browser #11 的真实包复验](../docs/browser-issue11-verification.md) 定位并修正了 group 内 ID 漏扫。修正后的 ID 去重 + browser 服务隔离 + 已有 tools scope shim 已通过两组真实包 Host 共存验证，65 笔工具注册归属完整。仅安装本插件仍不会自动生成服务 realm/工具 scope；以下历史 ID 去重结果不能单独视为完整兼容结论。

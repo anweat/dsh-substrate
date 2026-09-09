@@ -1,6 +1,6 @@
 {
   "name": "@anweat/dsh-substrate",
-  "version": "0.1.1",
+  "version": "0.1.2",
   "type": "module",
   "description": "Diagnoses DeepSeek Harness plugin conflicts and guides a version-locked external repair when one is available.",
   "license": "MIT",

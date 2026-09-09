@@ -12,7 +12,7 @@
  * Run: node test/panel.spec.mjs
  */
 import {
-  definePanel, channelFor, contributionsOfPanel, panelClient,
+  definePanel, channelFor, routeFor, contributionsOfPanel, panelClient,
   mountPanelHost, mountPanelClient, RESERVED_CHANNELS,
 } from '../src/panel.mjs'
 
@@ -37,11 +37,11 @@ function fakeCtx(name, world) {
       },
     },
     connection: {
-      rpc: {
-        handle: (channel, handler, options) => {
-          if (world.channels.has(channel)) throw new Error(`webserver: duplicate prefix route "${channel}"`)
-          world.channels.set(channel, { owner: name, handler, options })
-          return async () => { world.channels.delete(channel) }
+      fetch: {
+        register: route => {
+          if (world.channels.has(route.path)) throw new Error(`connection: exact Fetch route "${route.path}" is already registered`)
+          world.channels.set(route.path, { owner: name, route })
+          return async () => { world.channels.delete(route.path) }
         },
       },
     },
@@ -119,8 +119,8 @@ console.log('\n=== 身份:注册必须落在插件自己的 ctx 上 ===')
   const hostPanel = definePanel({ pkg: '@a/p', name: 'main', slot: 's', endpoints: ['list'] })
   mountPanelHost(plugin, hostPanel, { list: () => [] })
   check('通道归属同样取自调用方 ctx',
-    w.channels.get('/a-p.main').owner === 'plugin-a',
-    w.channels.get('/a-p.main').owner)
+    w.channels.get('/api/a-p.main.list').owner === 'plugin-a',
+    w.channels.get('/api/a-p.main.list').owner)
 }
 
 console.log('\n=== 两个包各自挂载,后端不再撞车 ===')
@@ -132,7 +132,7 @@ console.log('\n=== 两个包各自挂载,后端不再撞车 ===')
   let threw
   try { mountPanelHost(fakeCtx('b', w), b, { list: () => 2 }) } catch (e) { threw = e }
   check('两个同名面板的不同包共存', threw === undefined, String(threw))
-  check('各占一条通道', w.channels.size === 2, String(w.channels.size))
+  check('各占一条精确路由', w.channels.size === 2, String(w.channels.size))
 
   // The same package mounted twice is a genuine collision and must still throw.
   const w2 = world()
@@ -165,12 +165,13 @@ console.log('\n=== 调用方:路径只写一次 ===')
   })
   check('每个 endpoint 一个方法', Object.keys(client).join(',') === 'list,save', Object.keys(client).join(','))
   check('返回解包后的业务结果', await client.list({ page: 1 }) === 'reply')
-  check('URL 由声明拼出,组件不写路径', calls[0].url === '/a-p.main/list', calls[0].url)
+  check('URL 由声明拼出,组件不写路径', calls[0].url === '/api/a-p.main.list', calls[0].url)
   const first = JSON.parse(calls[0].body)
   check('载荷与方法位于真实 RPC 信封内', first.type === 'client-request' && first.method === 'list' && first.payload.page === 1 && typeof first.rpcId === 'string', calls[0].body)
   await client.save()
   check('省略载荷时发 null,请求标识不重复', JSON.parse(calls[1].body).payload === null && JSON.parse(calls[1].body).rpcId !== first.rpcId, calls[1].body)
   check('未声明的 endpoint 不存在方法', client.nope === undefined)
+  check('routeFor 拒绝未声明 endpoint', throws(() => routeFor(panel, 'nope')))
 }
 
 console.log('\n=== 接进裁决账本:一个面板是两笔贡献 ===')

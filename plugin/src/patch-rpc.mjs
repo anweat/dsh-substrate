@@ -22,8 +22,8 @@ import { resolvePatchTarget } from './patch-target.mjs'
 import { isStaged, stage, unstage, PATCH_TARGET, PATCH_FILE, PATCH_VERSION, patchFor } from './stage-patch.mjs'
 import { PACKAGE_SPEC } from './package-spec.mjs'
 
-/** The channel the browser half calls; one segment, as the grammar allows. */
-export const CHANNEL = '/dsh-substrate'
+/** Exact read-only route carried by Connection's shared authenticated API. */
+export const STATUS_ROUTE = '/api/dsh-substrate/status'
 
 /** Stable source marker inserted by the version-locked loader patch. */
 export const PATCH_MARKER = '// dsh-substrate entry-id repair v4'
@@ -55,7 +55,7 @@ export function status(home, options = {}) {
   const common = {
     home,
     target: patch?.target ?? (found.packageName ? `${found.packageName}@${found.version ?? 'unknown'}` : PATCH_TARGET),
-    expectedVersion: patch?.version ?? (found.packageName ? '0.1.2-alpha.2 - 0.1.2-alpha.5' : PATCH_VERSION),
+    expectedVersion: patch?.version ?? (found.packageName ? '0.1.2-alpha.2 - 0.1.5-alpha.1 (audited releases only)' : PATCH_VERSION),
     file: patch?.file ?? PATCH_FILE,
     install: 'pnpm install',
     commands: {
@@ -142,18 +142,44 @@ export function registerPatchRpc(ctx, home) {
   const bootApplied = initial.bootApplied === true
   const currentStatus = () => status(home, { bootApplied })
   ctx.inject(['connection'], (connectionCtx) => {
-    const dispose = connectionCtx.connection.rpc.handle(CHANNEL, async (endpoint, _payload) => {
-      try {
-        switch (endpoint) {
-          case 'status': return { ok: true, value: currentStatus() }
-          default: return { ok: false, error: { code: 'not-found', message: `unknown endpoint: ${endpoint}` } }
+    // DSH 0.1.5 made WebServer an optional Connection transport. A dedicated
+    // channel registered before that transport appears has no physical route.
+    // The exact Fetch registry is carrier-neutral and joins /api whenever the
+    // browser transport exists; registering only this path also keeps every
+    // installation write endpoint absent.
+    connectionCtx.effect(() => connectionCtx.connection.fetch.register({
+      path: STATUS_ROUTE,
+      methods: ['POST'],
+      requestBody: 'buffered',
+      fetch: async (request) => {
+        let body
+        try {
+          body = await request.json()
+        } catch {
+          return new Response('body is not JSON', { status: 400 })
         }
-      } catch (error) {
-        // A filesystem refusal — a read-only install, a manifest owned by root —
-        // is a fact about the machine, not a bug to hide; the card shows it.
-        return { ok: false, error: { code: 'bad-request', message: String(error instanceof Error ? error.message : error).slice(0, 500) } }
-      }
-    }, { authority: 'loopback' })
-    connectionCtx.effect(() => dispose, 'dsh-substrate: patch RPC')
+        const rpcId = typeof body === 'object' && body !== null && typeof body.rpcId === 'string'
+          ? body.rpcId
+          : 'invalid-request'
+        if (typeof body !== 'object' || body === null || body.type !== 'client-request'
+          || body.method !== 'dsh-substrate/status') {
+          return Response.json({
+            type: 'server-response', rpcId,
+            result: { ok: false, error: { code: 'gateway/bad-request', message: 'invalid status request', details: {} } },
+          })
+        }
+        try {
+          return Response.json({
+            type: 'server-response', rpcId,
+            result: { ok: true, value: currentStatus() },
+          })
+        } catch (error) {
+          return Response.json({
+            type: 'server-response', rpcId,
+            result: { ok: false, error: { code: 'gateway/bad-request', message: String(error instanceof Error ? error.message : error).slice(0, 500), details: {} } },
+          })
+        }
+      },
+    }), 'dsh-substrate: patch RPC')
   })
 }

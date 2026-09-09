@@ -7,7 +7,12 @@ import {patchFor,stage} from '../src/stage-patch.mjs'
 import {status,apply,PATCH_MARKER} from '../src/patch-rpc.mjs'
 let count=0
 const check=(name,fn)=>{fn();count++;console.log(`PASS ${name}`)}
-for(const version of ['0.1.2-alpha.2','0.1.2-alpha.3','0.1.2-alpha.4','0.1.2-alpha.5','0.1.3-alpha.1']){
+for(const version of [
+ '0.1.2-alpha.2','0.1.2-alpha.3','0.1.2-alpha.4','0.1.2-alpha.5',
+ '0.1.2-rc.1','0.1.3-alpha.2','0.1.5-alpha.1',
+ // This Git tag was never published as an installable app-boot package.
+ '0.1.3-alpha.1',
+]){
  const root=mkdtempSync(join(tmpdir(),'substrate-alpha-target-')),home=join(root,'home')
  for(const [name,v] of [['dsh-app-boot',version],['cordis-plugin-include','1.0.7']]){
   const dir=join(root,'node_modules/@deepseek-ai',name),link=join(home,'profiles/node_modules/@deepseek-ai',name)

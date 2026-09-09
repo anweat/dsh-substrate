@@ -70,7 +70,7 @@ console.log('\n=== 补丁只在有冲突时才提 ===')
 {
   const dirty = render(inspect([row('a', 'x'), row('a', 'y')]))
   check('有冲突时交给外部修复命令',
-    /@anweat\/dsh-substrate@0\.1\.1 repair --apply/.test(dirty), dirty.slice(-360))
+    /@anweat\/dsh-substrate@0\.1\.2 repair --apply/.test(dirty), dirty.slice(-360))
   check('不再让用户猜 profile 或工作区路径',
     !/<profile>|patchedDependencies:|package\.json/.test(dirty), dirty.slice(-360))
   check('说清声明、重链和重启验证是三个阶段',

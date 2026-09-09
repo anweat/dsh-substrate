@@ -8,8 +8,8 @@
  *   1. `registrant` follows the Context that reads `slots`, so a scaffold
  *      function called with the plugin's ctx keeps the plugin's identity, and
  *      one called with the scaffold's own ctx loses it.
- *   2. `connection.rpc.handle` lands as a real prefix route on the real
- *      webserver and answers over HTTP.
+ *   2. `connection.fetch.register` lands as an exact route on Connection's
+ *      shared authenticated `/api` transport and answers over HTTP.
  *   3. Deriving the channel from the package name makes two same-named panels
  *      from different packages coexist, while the genuine collision — one
  *      package mounted twice — still throws.
@@ -28,7 +28,7 @@ import WebServer from './packages/host/webserver/src/index.ts'
 import * as connection from './packages/client/connection/src/index.ts'
 
 const SUBSTRATE = pathToFileURL(process.env.DSH_SUBSTRATE ?? '../substrate/src').href
-const { definePanel, mountPanelHost, mountPanelClient, channelFor, panelClient } = await import(`${SUBSTRATE}/panel.mjs`)
+const { definePanel, mountPanelHost, mountPanelClient, channelFor, routeFor, panelClient } = await import(`${SUBSTRATE}/panel.mjs`)
 
 let ok = 0, fail = 0
 const check = (label: string, cond: boolean, detail?: string): void => {
@@ -116,7 +116,7 @@ async function main(): Promise<void> {
     })
     check('通道路径由包名派生', panel.channel === '/a-plugin.data', panel.channel)
 
-    const response = await fetch(`http://127.0.0.1:${port}${panel.channel}/list`, {
+    const response = await fetch(`http://127.0.0.1:${port}${routeFor(panel, 'list')}`, {
       method: 'POST',
       headers,
       body: JSON.stringify({ type: 'client-request', rpcId: 'lab-1', method: 'list', payload: { hello: 'world' } }),
@@ -129,7 +129,7 @@ async function main(): Promise<void> {
     const value = await client.list({ hello: 'world' })
     check('panelClient 经真实认证通道收回业务值', value.echo.hello === 'world')
     if (headers.cookie) {
-      const denied = await fetch(`http://127.0.0.1:${port}${panel.channel}/list`, {
+      const denied = await fetch(`http://127.0.0.1:${port}${routeFor(panel, 'list')}`, {
         method: 'POST', headers: { 'content-type': 'application/json', connection: 'close' },
         body: JSON.stringify({ type: 'client-request', rpcId: 'unsigned', method: 'list', payload: null }),
       })
@@ -157,7 +157,7 @@ async function main(): Promise<void> {
       await asPlugin('co-a-fork', ctx => { mountPanelHost(ctx, a, { x: () => 3 }) })
     } catch (e) { duplicate = e }
     check('同一个面板挂第二次仍然抛错 —— 脚手架不掩盖真冲突',
-      duplicate !== undefined && /duplicate/.test(String(duplicate)), String(duplicate).slice(0, 140))
+      duplicate !== undefined && /(duplicate|already registered)/.test(String(duplicate)), String(duplicate).slice(0, 140))
   }
 
   console.log('\n=== 处置:通道随插件的 fiber 一起消失 ===')
@@ -168,7 +168,7 @@ async function main(): Promise<void> {
       inject: ['slots', 'connection', 'webServer'],
       apply: (ctx: Context) => { mountPanelHost(ctx, panel, { ping: () => 'pong' }) },
     })
-    const url = `http://127.0.0.1:${port}${panel.channel}/ping`
+    const url = `http://127.0.0.1:${port}${routeFor(panel, 'ping')}`
     const live = await fetch(url, {
       method: 'POST', headers,
       body: JSON.stringify({ type: 'client-request', rpcId: 'lab-1', method: 'ping', payload: null }),

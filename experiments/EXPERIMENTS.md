@@ -122,7 +122,7 @@ node bin/tokens.mjs lint <dsh-root> [scan-root]  # 对照检查,仅缺陷决定�
 
 两条实测的运行时事实定了它的形状:
 
-**后端侧没有任何一条接缝是相加的。** `webServer.register` 撞路径抛错;`connection.rpc.handle` 最终也落成 prefix 路由,同样抛错;`intercept('/api')` 全进程只有一个座位。所以路径不是插件可以自由取的名字。
+**后端侧没有任何一条接缝是相加的。** `webServer.register` 撞路径抛错；`connection.fetch.register` 的精确路径也必须唯一；`intercept('/api')` 全进程只有一个座位。所以路径不是插件可以自由取的名字。
 
 **身份取自调用方 fiber。** `SlotRegistry` 从 `this.ctx.fiber.name` 盖 `registrant`,`connection.rpc` 捕获 `owner = this.ctx`。真注册表上实测:
 
@@ -133,7 +133,7 @@ mountPanelClient(scaffoldCtx, …)   registrant = the-scaffold   包裹式的失
 
 所以脚手架是插件**用自己的 ctx 调用的函数**,发射注册而不包裹注册。包裹会把整个生态盖成同一个名字,priority 仲裁再也分不出谁是谁。
 
-`channelFor('@scope/thing','main')` → `/scope-thing.main`。用 `.` 连接而非嵌套,因为真文法 `^\/[A-Za-z0-9._~-]+$` **只认一段**——这条是打真服务才发现的,我最初派生的 `/a-plugin/data` 被直接拒绝。
+`channelFor('@scope/thing','main')` → `/scope-thing.main`，端点 `list` 对应精确路由 `/api/scope-thing.main.list`。用 `.` 连接而非嵌套，因为共享 `/api` 的路由后缀只认一段；这样每个插件只占自己的精确路径，也不依赖 Connection 是否已经注入 WebServer。
 
 `substrate/bin/whatif-panel-channels.mjs` 在 503 仓库路由样本上量化:争用路径 **49 → 0**,牵涉的 32 个包全部无需让位。争用方是同源分叉(`/sidebar/*` 四个包、`/dsh-market/*` 四个包),但分叉改了包名,所以按包名派生确实能分开;分开后两者共存,而今天同装是启动失败。
 
