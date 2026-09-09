@@ -1,6 +1,6 @@
 /**
  * The installation-repair state, driven by the Host's read-only
- * `/dsh-substrate` channel.
+ * `/api/dsh-substrate/status` route.
  *
  * Every branch the card renders comes from the Host, not from this file: only
  * the Host can follow `$DSH_HOME/profiles/node_modules/<loader>` to the
@@ -15,8 +15,9 @@ export interface Rpc {
   call(channel: string, endpoint: string, payload: unknown): Promise<unknown>
 }
 
-/** The channel the Host mounts. */
-const CHANNEL = '/dsh-substrate'
+/** Shared Connection channel and the exact read-only endpoint the Host mounts. */
+const CHANNEL = '/api'
+const STATUS_ENDPOINT = 'dsh-substrate/status'
 
 /** What the Host reports about this machine's patch target. */
 export interface PatchStatus {
@@ -120,7 +121,8 @@ export class PatchController {
 
   private async send(endpoint: string): Promise<unknown> {
     try {
-      const reply = await this.rpc.call(CHANNEL, endpoint, {}) as Reply
+      const target = endpoint === 'status' ? STATUS_ENDPOINT : `dsh-substrate/${endpoint}`
+      const reply = await this.rpc.call(CHANNEL, target, {}) as Reply
       if (reply.ok) return reply.value
       this.lastError = reply.error?.message ?? 'unknown error'
       return undefined

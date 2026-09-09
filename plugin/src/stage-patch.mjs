@@ -29,7 +29,10 @@ export const PATCH_FILE = '@deepseek-ai__cordis-plugin-include@1.0.7.patch'
 
 /** Audited release artifacts only; do not widen this to a semver range. */
 export function patchFor(version = PATCH_VERSION) {
-  if (['0.1.2-alpha.2', '0.1.2-alpha.3', '0.1.2-alpha.4', '0.1.2-alpha.5'].includes(version)) {
+  if ([
+    '0.1.2-alpha.2', '0.1.2-alpha.3', '0.1.2-alpha.4', '0.1.2-alpha.5',
+    '0.1.2-rc.1', '0.1.3-alpha.2', '0.1.5-alpha.1',
+  ].includes(version)) {
     return {version, target: `@deepseek-ai/dsh-app-boot@${version}`,
       file: `@deepseek-ai__dsh-app-boot@${version}.patch`}
   }

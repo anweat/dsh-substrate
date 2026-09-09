@@ -127,7 +127,7 @@ console.log('\n=== 命令行说明使用用户语义 ===')
   const f = fixture()
   const available = renderStatus(status(f.home, { bootApplied: false }))
   check('可执行状态给出明确动作', /可以准备安装级修复/.test(available))
-  check('可执行状态给出完整命令', /npx --yes @anweat\/dsh-substrate@0\.1\.1 repair --apply/.test(available))
+  check('可执行状态给出完整命令', /npx --yes @anweat\/dsh-substrate@0\.1\.2 repair --apply/.test(available))
 
   const source = renderStatus({
     ...status(f.home, { bootApplied: false }),

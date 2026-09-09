@@ -7,14 +7,20 @@ const out=resolve(process.argv[2]),tarball=resolve(process.argv[3]);mkdirSync(ou
 const results=[]
 let timings={}
 function run(cmd,args,cwd,log){const start=performance.now();const fd=openSync(join(cwd,log),'w');let result;try{result=spawnSync(cmd,args,{cwd,shell:cmd.endsWith('.cmd'),stdio:['ignore',fd,fd],timeout:240000,env:{...process.env,CI:'true',DSH_HOME:join(cwd,'home')}})}finally{closeSync(fd);timings[log]=performance.now()-start}if(result.status!==0)throw Error(`${log} failed: ${result.status} ${result.error??''} ${readFileSync(join(cwd,log),'utf8').slice(-600)}`)}
-for(const version of ['0.1.2-alpha.2','0.1.2-alpha.3','0.1.2-alpha.4','0.1.2-alpha.5']){
+const publishedVersions=['0.1.2-alpha.2','0.1.2-alpha.3','0.1.2-alpha.4','0.1.2-alpha.5','0.1.2-rc.1','0.1.3-alpha.2','0.1.5-alpha.1']
+const requested=(process.env.DSH_MATRIX_VERSIONS??'').split(',').map(value=>value.trim()).filter(Boolean)
+const versions=requested.length===0?publishedVersions:requested
+for(const version of versions){
  const root=join(out,version);if(existsSync(root)){
    if(!process.argv.includes('--resume')||JSON.parse(readFileSync(join(root,'package.json'),'utf8')).dependencies['@deepseek-ai/dsh']!==version)throw Error(`Refusing existing fixture ${root}`)
  }else mkdirSync(root)
  try{
  timings={}
  writeFileSync(join(root,'package.json'),JSON.stringify({private:true,type:'module',dependencies:{'@deepseek-ai/dsh':version,'@deepseek-ai/dsh-app-boot':version,'@deepseek-ai/dsh-tools':version,'@deepseek-ai/dsh-system-prompt':version,'@deepseek-ai/dsh-settings':version,'@anweat/dsh-substrate':`file:${tarball.replaceAll('\\','/')}`}},null,2))
- writeFileSync(join(root,'pnpm-workspace.yaml'),"packages:\n  - '.'\nnodeLinker: hoisted\nautoInstallPeers: true\nignoreScripts: true\n")
+ // Exact DSH releases are the subject of this fixture and may be younger than
+ // the machine's global minimumReleaseAge. Keep policy checks for every other
+ // dependency while allowing the explicitly pinned official scope.
+ writeFileSync(join(root,'pnpm-workspace.yaml'),"packages:\n  - '.'\nnodeLinker: hoisted\nautoInstallPeers: true\nignoreScripts: true\nminimumReleaseAgeExclude:\n  - '@deepseek-ai/*'\n")
  // Official packages use caret prereleases. Pin the DSH family to avoid testing a newer RC accidentally.
  writeFileSync(join(root,'.pnpmfile.cjs'),`module.exports={hooks:{readPackage(pkg){for(const key of ['dependencies','optionalDependencies','peerDependencies'])for(const [name,value] of Object.entries(pkg[key]||{})){if(name.startsWith('@deepseek-ai/dsh-')&&/^[~^]?0\\.1\\./.test(value))pkg[key][name]='${version}';}return pkg;}}};`)
  run('pnpm.cmd',['install','--ignore-scripts','--no-frozen-lockfile'],root,'install.log')
