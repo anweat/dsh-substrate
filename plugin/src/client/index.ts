@@ -20,6 +20,7 @@
  */
 import { SubstrateCardController, type Scope, type SubstrateCardState } from './controller.js'
 import { PatchController, type PatchState, type Rpc } from './patch-controller.js'
+import { ConflictController, type ConflictState } from './conflict-controller.js'
 import { en, zh } from './locales.js'
 import { ensureStyles } from './styles.js'
 import { SubstrateCard } from './SubstrateCard.js'
@@ -38,6 +39,8 @@ export interface SubstrateCardProps {
   useSubstrateCard: <R>(selector: (snapshot: SubstrateCardState) => R) => R
   /** Subscribe to the patch row's state; bound from `hooks.substratePatch`. */
   useSubstratePatch: <R>(selector: (snapshot: PatchState) => R) => R
+  /** Subscribe to the runtime tool-conflict catalog. */
+  useSubstrateConflicts: <R>(selector: (snapshot: ConflictState) => R) => R
   /** Stage text for the settle-window field. */
   edit: (text: string) => void
   /** Stage a clear, so the field re-inherits the composition layer. */
@@ -74,6 +77,8 @@ export function apply(ctx: ClientContext): void {
 
   const patch = new PatchController(ctx.connection.rpc)
   ctx.effect(() => () => { patch.dispose() }, 'dsh-substrate: patch controller')
+  const conflicts = new ConflictController(ctx.connection.rpc)
+  ctx.effect(() => () => { conflicts.dispose() }, 'dsh-substrate: conflict controller')
 
   ctx.slots.inject('settings.plugin.item', () => ctx.slots.register({
     name: 'settings.plugin.item',
@@ -82,10 +87,12 @@ export function apply(ctx: ClientContext): void {
     inject: () => {
       const settingsFace = settings.inject()
       const patchFace = patch.inject()
+      const conflictFace = conflicts.inject()
       return {
         ...settingsFace,
         ...patchFace,
-        hooks: { ...settingsFace.hooks, ...patchFace.hooks },
+        ...conflictFace,
+        hooks: { ...settingsFace.hooks, ...patchFace.hooks, ...conflictFace.hooks },
       }
     },
   }, SubstrateCard))

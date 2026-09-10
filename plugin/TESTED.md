@@ -1,5 +1,7 @@
 # 实测记录
 
+2026-09-10 的工具重名前缀实现通过完整仓库测试 **462/462**，其中新增 20 条运行时断言覆盖原名赢家、npm/插件前缀、64 字符边界、显式 scope、不释放泄漏、保留名与早期 bootstrap；新增 6 条 Host RPC/客户端失败态断言。另在真实 DSH 基线 `50854a854f` 上以实际 Cordis、ToolRuntime、SystemPrompt 跑通 7/7：两个插件 fiber 同时保留、别名全局可见、卸载后工具与 ledger 一起消失、`run_code` 仍拒绝。搜索能力则对官方最新 HEAD `aa8262ec091698bae9a6b04773a6b5b06ad4aef2` 重新读源码：当前只有 `native`/`ptc`/`both` 展示、`schemas(scope)` 和 scope mask，没有 `tool_search` 注册表或工具引用分发；Web 文档里的 search-only 仅指 `web_search` 不配 `web_fetch`。因此卡片只启用默认前缀注入，另外两项列出但禁用。Loader 根行并发启动意味着普通插件 bootstrap 仍有早期竞态；每个正式版本的 boot 前置集成留到下一轮精确适配，不把本轮机制实验写成无条件启动保证。
+
 2026-09-09 的 [alpha.5 后续版本验收](../docs/post-alpha5-compatibility.md) 使用 npm 精确版本 `0.1.2-rc.1`、`0.1.3-alpha.2`、`0.1.5-alpha.1` 分别安装打包插件，并完成真实启动、CLI apply/revert、15 组重复 ID、5 组配对计时、Host/设置/RPC 与重启后 verified 闭环。Git tag `0.1.3-alpha.1` 没有对应 npm app-boot 包，因此只作源码对照。另在官方 `dsh-v0.1.5-alpha.1` 源码上通过 207 条机制断言，确认工具 scope/自适应运行时仍有效，并把 panel 后端迁到共享认证 `/api` 的精确 Fetch 路由。
 
 2026-09-07 的交付验收以 [真实 pnpm 插件矩阵](../docs/pnpm-plugin-compatibility.md) 为准：npm alpha.2～.5 的 app-boot 内嵌 Include，需修复实际启动包；四版安装后的 CLI、Host、设置、RPC 与客户端状态控制器均已验证。下面的源码/独立 include 测试保留为分层证据，不再作为 npm 全插件支持的替代。
@@ -86,6 +88,9 @@ dsh-plugin-browser               dsh-plugin-browser
 | [`lab-auto-dedup.ts`](../experiments/lab-auto-dedup.ts) | 11 —— 写死的重复 id 零作者改动自动解决;同包装两次照样响亮报错 |
 | [`lab-derived-entry-id.ts`](../experiments/lab-derived-entry-id.ts) | 13 —— 包名派生的 id 跨启动一致;派生必须早于 applyEntryPatches |
 | [`lab-id-injection.ts`](../experiments/lab-id-injection.ts) | 6 —— 内核那段检查可从外部替换且可逆;但插件不能是替换它的人 |
+| [`verify-current-dsh-tool-prefix.ts`](../experiments/verify-current-dsh-tool-prefix.ts) | 7 —— 真实 Cordis/ToolRuntime 的前缀注入、全局可见、fiber 卸载与 `run_code` 保留名 |
+| [`plugin/test/tool-conflicts.spec.mjs`](test/tool-conflicts.spec.mjs) | 20 —— 前缀推导、别名碰撞、长度边界、显式 scope、ledger 生命周期与 bootstrap |
+| [`plugin/test/conflict-surface.spec.mjs`](test/conflict-surface.spec.mjs) | 6 —— 只读冲突 RPC、标准信封、客户端成功与失败状态 |
 
 ## 5. 设置卡片与安装级修复
 

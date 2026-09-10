@@ -1,13 +1,13 @@
 # @anweat/dsh-substrate
 
-`dsh-substrate` diagnoses DeepSeek Harness plugin conflicts and supplies a reversible, version-locked repair for duplicate loader entry IDs.
+`dsh-substrate` diagnoses DeepSeek Harness plugin conflicts, prefixes duplicate runtime tool names, and supplies a reversible, version-locked repair for duplicate loader entry IDs.
 
 The Web card is read-only. It reports the detected DSH installation, the exact loader version, and the repair state. The external CLI performs installation changes so the running DSH process never rewrites its own dependencies.
 
 ## Install in DSH
 
 ```powershell
-dsh plugin --profile web add @anweat/dsh-substrate@^0.1.2
+dsh plugin --profile web add @anweat/dsh-substrate@^0.1.3
 ```
 
 Restart DSH after installing the plugin. Open the Substrate compatibility card to inspect the current state.
@@ -17,19 +17,19 @@ Restart DSH after installing the plugin. Open the Substrate compatibility card t
 Check whether the detected installation is supported:
 
 ```powershell
-npx --yes @anweat/dsh-substrate@0.1.2 repair --home "<DSH_HOME>"
+npx --yes @anweat/dsh-substrate@0.1.3 repair --home "<DSH_HOME>"
 ```
 
 Apply the repair, then restart DSH:
 
 ```powershell
-npx --yes @anweat/dsh-substrate@0.1.2 repair --home "<DSH_HOME>" --apply --yes
+npx --yes @anweat/dsh-substrate@0.1.3 repair --home "<DSH_HOME>" --apply --yes
 ```
 
 Revert the repair, then restart DSH again:
 
 ```powershell
-npx --yes @anweat/dsh-substrate@0.1.2 repair --home "<DSH_HOME>" --revert --yes
+npx --yes @anweat/dsh-substrate@0.1.3 repair --home "<DSH_HOME>" --revert --yes
 ```
 
 The repair currently supports these exact packages:
@@ -47,7 +47,7 @@ the installable repair matrix.
 
 Unknown versions are refused before any file is changed. The CLI stages a pnpm patch in the real DSH installation workspace, runs `pnpm install`, verifies the installed file, and supports a matching revert transaction.
 
-This repair removes the duplicate entry-ID boot gate. It does not automatically isolate plugins that also claim the same Cordis service or tool names. Those later runtime conflicts still need service realms and tool scopes supplied by the host composition.
+The runtime plugin keeps the first tool registration under its original name and exposes later duplicates with a deterministic npm/plugin prefix, for example `anweat_dsh_browser__browser_click`. The card lists every active alias. The default-injection mode is enabled; search-only and collapsed-search are shown as unavailable because the audited DSH runtime has no tool-search registry or tool-reference dispatcher. The small bootstrap row improves activation order, but an ordinary plugin cannot recover a conflict rejected before that row activates; exact-version boot integration is deferred to the next DSH adaptation round. Service-name conflicts still require host composition with service realms.
 
 Version `0.1.0` users must add npm's peer-dependency compatibility flag when running the standalone CLI:
 

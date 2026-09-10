@@ -1,10 +1,10 @@
 /**
  * The substrate plugin, host half.
  *
- * It reports, and that is all it does. Everything it could usefully *decide* is
- * decided before it exists — a duplicate entry id is rejected during
- * `mountRootInclude` with zero plugins mounted — so a row promising to fix that
- * would be promising something its position rules out.
+ * It installs a narrow runtime fallback for duplicate tool registrations and
+ * reports the aliases it creates. Duplicate entry ids are still rejected
+ * during `mountRootInclude`, before any plugin exists, so that separate repair
+ * remains installation-level.
  *
  * It also exposes a read-only repair-status endpoint for the settings card.
  * The browser never changes dependencies: `patch-target.mjs` follows the
@@ -19,6 +19,8 @@ import z from '@deepseek-ai/schemastery'
 import { resolveDshHome } from '@deepseek-ai/dsh-home-paths'
 import { PATCH_TARGET, PATCH_FILE } from './stage-patch.mjs'
 import { registerPatchRpc } from './patch-rpc.mjs'
+import { registerConflictRpc } from './conflict-rpc.mjs'
+import { installToolConflictPrefixing, toolConflictStore } from './tool-conflicts.mjs'
 
 export const name = 'dsh-substrate'
 export const inject = ['tools']
@@ -67,6 +69,9 @@ const RESERVED = Object.freeze(['run_code'])
  */
 export function apply(ctx, config = {}) {
   const log = config.log ?? (line => { ctx.logger?.info?.(line) ?? console.log(line) })
+  const conflicts = toolConflictStore(ctx)
+  const restoreToolRuntime = installToolConflictPrefixing(ctx.tools, conflicts)
+  ctx.effect(() => restoreToolRuntime, 'dsh-substrate: tool conflict prefixing')
 
   // Registering the namespace is what puts the card on the plugin-settings tab.
   // `ConfigurablePluginsTabController` renders the intersection of two ledgers:
@@ -78,6 +83,7 @@ export function apply(ctx, config = {}) {
   // would not survive validation.
   const entry = config.settleMs === undefined ? {} : { settleMs: config.settleMs }
   registerPatchRpc(ctx, config.home ?? resolveDshHome())
+  registerConflictRpc(ctx, () => conflicts.snapshot())
 
   let source = () => entry
   ctx.inject(['settings'], (sctx) => {
@@ -104,15 +110,11 @@ export function apply(ctx, config = {}) {
   const report = () => {
     const schemas = typeof ctx.tools?.schemas === 'function' ? ctx.tools.schemas() : []
     const names = schemas.map(s => s.name)
-    const seen = new Set()
-    const duplicated = new Set()
-    for (const n of names) {
-      if (seen.has(n)) duplicated.add(n)
-      seen.add(n)
-    }
+    const seen = new Set(names)
+    const duplicated = conflicts.snapshot().items
 
-    log(`dsh-substrate: ${names.length} 个工具在全局命名空间,${duplicated.size} 个重名`)
-    for (const n of duplicated) log(`  重名: ${n}`)
+    log(`dsh-substrate: ${names.length} 个工具在全局命名空间,${duplicated.length} 个重名`)
+    for (const item of duplicated) log(`  重名: ${item.originalName} (${item.owner}) -> ${item.exposedName}`)
     for (const n of RESERVED) {
       if (seen.has(n)) log(`  保留名 ${n} 已被占用 —— 它不接受任何分层`)
     }

@@ -2,7 +2,7 @@
 
 2026-09-07：可安装插件的当前版本范围与验收见 [pnpm compatibility](docs/pnpm-plugin-compatibility.md)。npm alpha.2～.5 使用内嵌 Include 的 app-boot 补丁；源码矩阵、独立 loader 实验与真正安装后的验证分别记录。
 
-A conflict-resolution substrate for the DeepSeek Harness plugin ecosystem, and the measurements it is built on.
+A conflict-resolution substrate for the DeepSeek Harness plugin ecosystem, and the measurements it is built on. The installable plugin now retains the first tool registration under its original name and automatically exposes later duplicates with deterministic npm/plugin prefixes. The [tool exposure review](docs/tool-conflict-exposure.md) records which modes current DSH can implement and the remaining early-activation boundary.
 
 The ecosystem has a structural problem: **9,216 root inserts and 0 group inserts** across 9,873 scanned plugins, while the shipped design keeps the global layer empty. Every plugin author sees only their own row, so every plugin inserts into the one layer it can see, and they land on top of each other. Installing all of them makes **581 registry cells throw**, and any one of those is a boot failure.
 
@@ -36,9 +36,9 @@ DSH 还没有正式版本。它今天缺的东西——客户端槽位的 rank�
 
 | | |
 |---|---|
-| `substrate/` | the substrate itself — arbitration, adapters, contracts (251 assertions) |
+| `substrate/` | the substrate itself — arbitration, adapters, contracts (258 assertions) |
 | `pipeline/` | the ecosystem scanner and the baseline catalog generator |
-| `experiments/` | mechanism experiments against a real harness checkout (160 assertions) |
+| `experiments/` | mechanism experiments against a real harness checkout (167 assertions) |
 | `e2e/` | the whole thing booted: corpus packages on a real shipped profile |
 | `plugin/` | the installable plugin — [contract](plugin/CONTRACT.md) and [what was actually tested](plugin/TESTED.md) |
 | `patches/` | the one distributable fix — [why `pnpm patch` and not a preload or a fork](patches/README.md) |
@@ -47,7 +47,7 @@ DSH 还没有正式版本。它今天缺的东西——客户端槽位的 rank�
 
 ## Product shape
 
-The Web card is a read-only compatibility surface, not a patch toggle. It reports the exact installation, target version, and repair phase, then hands an explicit command to an external process. `dsh-substrate repair --apply` validates again, stages the version-locked patch, runs `pnpm install` in the real DSH installation workspace, and verifies the installed file; a restarted Host is the only thing allowed to call the repair `verified`. `--revert` follows the same transaction in reverse.
+The Web card is a read-only compatibility surface, not a patch toggle. It reports the exact installation, target version, repair phase, and active duplicate-tool aliases, then hands an explicit command to an external process. `dsh-substrate repair --apply` validates again, stages the version-locked patch, runs `pnpm install` in the real DSH installation workspace, and verifies the installed file; a restarted Host is the only thing allowed to call the repair `verified`. `--revert` follows the same transaction in reverse.
 
 This split is intentional: a plugin already running inside DSH must not reinstall the process hosting it, and “declaration written”, “dependency relinked”, and “new process loaded” are different facts.
 
@@ -56,19 +56,19 @@ This split is intentional: a plugin already running inside DSH must not reinstal
 Install the compatibility card into the DSH Web profile, then restart DSH:
 
 ```powershell
-dsh plugin --profile web add @anweat/dsh-substrate@^0.1.2
+dsh plugin --profile web add @anweat/dsh-substrate@^0.1.3
 ```
 
 The card reports the exact installation and repair state. Run the write transaction outside DSH, then restart DSH again so a new Host can verify the loaded code:
 
 ```powershell
-npx --yes @anweat/dsh-substrate@0.1.2 repair --home "<DSH_HOME>"
-npx --yes @anweat/dsh-substrate@0.1.2 repair --home "<DSH_HOME>" --apply --yes
+npx --yes @anweat/dsh-substrate@0.1.3 repair --home "<DSH_HOME>"
+npx --yes @anweat/dsh-substrate@0.1.3 repair --home "<DSH_HOME>" --apply --yes
 ```
 
-To undo it, run `npx --yes @anweat/dsh-substrate@0.1.2 repair --home "<DSH_HOME>" --revert --yes`, then restart DSH. Version `0.1.0` requires `--legacy-peer-deps` immediately after `--yes` when invoked through `npx`; later releases remove that workaround.
+To undo it, run `npx --yes @anweat/dsh-substrate@0.1.3 repair --home "<DSH_HOME>" --revert --yes`, then restart DSH. Version `0.1.0` requires `--legacy-peer-deps` immediately after `--yes` when invoked through `npx`; later releases remove that workaround.
 
-The repair supports `@deepseek-ai/cordis-plugin-include@1.0.6` and `1.0.7`, plus exact `@deepseek-ai/dsh-app-boot` builds `0.1.2-alpha.2` through `alpha.5`, `0.1.2-rc.1`, `0.1.3-alpha.2`, and `0.1.5-alpha.1`. It fixes duplicate loader entry IDs. Service-name and tool-name collisions occur later in boot and still require host composition with service realms and tool scopes. See the packaged [installation guide](plugin/README.md), [post-alpha.5 acceptance](docs/post-alpha5-compatibility.md), and [browser coexistence verification](docs/browser-issue11-verification.md).
+The repair supports `@deepseek-ai/cordis-plugin-include@1.0.6` and `1.0.7`, plus exact `@deepseek-ai/dsh-app-boot` builds `0.1.2-alpha.2` through `alpha.5`, `0.1.2-rc.1`, `0.1.3-alpha.2`, and `0.1.5-alpha.1`. It fixes duplicate loader entry IDs. Runtime tool-name collisions are handled by deterministic npm/plugin prefixes; service-name collisions still require host composition with service realms. See the packaged [installation guide](plugin/README.md), [post-alpha.5 acceptance](docs/post-alpha5-compatibility.md), and [browser coexistence verification](docs/browser-issue11-verification.md).
 
 ## Develop
 
@@ -84,7 +84,7 @@ npm run baseline -- <dsh-checkout>    # regenerate the known-component catalog
 
 **L1 — vocabulary.** Ten contribution kinds split into `exclusive` and `additive`. A conflict is only counted where the runtime makes it one: a `single`/`keyed` seat, a registry that throws, a config row two layers both rewrite. `list`/`chain` seats are additive by construction and are counted, never flagged.
 
-**L2 — arbitration.** A pure function from contributions to decisions, with five remedies. All 581 tool-name conflicts resolve to `layer`; **not one requires renaming something a model can see.**
+**L2 — arbitration.** A pure function from contributions to decisions, with five remedies. The research model still supports scoped layering; the installable plugin uses deterministic prefixes so independently installed plugins remain globally callable without a separate agent-scope composition pass.
 
 **L3 — adaptation.** Patch emission, scope-chain planning, route realm proxying, preset emission, and the boot-time tools shim that puts a config-mounted plugin into a scope.
 
