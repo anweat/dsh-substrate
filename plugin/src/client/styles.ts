@@ -51,6 +51,10 @@ export const css = {
   failed: 'dsh-substrate-failed',
   discard: 'dsh-substrate-discard',
   save: 'dsh-substrate-save',
+  conflictList: 'dsh-substrate-conflict-list',
+  conflictItem: 'dsh-substrate-conflict-item',
+  conflictOwner: 'dsh-substrate-conflict-owner',
+  modeNotes: 'dsh-substrate-mode-notes',
 } as const
 
 const SHEET = `
@@ -168,6 +172,20 @@ const SHEET = `
   font-size: 11px;
   color: var(--dsw-alias-label-tertiary);
 }
+.${css.conflictList}, .${css.modeNotes} { margin: 2px 0 0; padding: 0; list-style: none; }
+.${css.conflictList} { display: flex; flex-direction: column; gap: 5px; }
+.${css.conflictItem} {
+  display: grid;
+  grid-template-columns: minmax(0, auto) auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 7px;
+  min-width: 0;
+  font-size: 12px;
+  color: var(--dsw-alias-label-secondary);
+}
+.${css.conflictItem} code { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.${css.conflictOwner} { color: var(--dsw-alias-label-tertiary); }
+.${css.modeNotes} { display: flex; flex-direction: column; gap: 3px; font-size: 12px; line-height: 1.5; color: var(--dsw-alias-label-tertiary); }
 .${css.steps} {
   list-style: none;
   display: grid;

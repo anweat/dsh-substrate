@@ -1,8 +1,8 @@
 {
   "name": "@anweat/dsh-substrate",
-  "version": "0.1.2",
+  "version": "0.1.3",
   "type": "module",
-  "description": "Diagnoses DeepSeek Harness plugin conflicts and guides a version-locked external repair when one is available.",
+  "description": "Prefixes duplicate DeepSeek Harness tools, reports conflicts, and guides version-locked external repairs.",
   "license": "MIT",
   "repository": {
     "type": "git",
@@ -39,6 +39,7 @@
   },
   "exports": {
     ".": "./src/index.mjs",
+    "./bootstrap": "./src/bootstrap.mjs",
     "./check": "./src/check.mjs",
     "./repair": "./src/repair.mjs",
     "./package.json": "./package.json",
@@ -108,6 +109,7 @@
     "@deepseek-ai/schemastery": "^3.18.2",
     "@types/react": "^19.2.18",
     "react": "^19.2.8",
-    "tsdown": "^0.22.14"
+    "tsdown": "^0.22.14",
+    "typescript": "^5.9.3"
   }
 }

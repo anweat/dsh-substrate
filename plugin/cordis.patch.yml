@@ -1,10 +1,12 @@
-# The substrate mounts one row, and only one.
+# The substrate mounts a small early bootstrap row and one reporter row.
 #
-# It reports what it can see from inside a booted tree. It does not rewrite the
-# composition from here: entry-id conflicts are decided before any plugin
-# applies, so `dsh-substrate-check` reports them first. Installation repair is
-# a separate, external `dsh-substrate repair` transaction; the running plugin
-# exposes only read-only status and runtime conflict reports.
+# It installs the runtime tool-name prefix fallback before later plugin rows,
+# and reports the resulting aliases. Entry-id conflicts are still decided
+# before any plugin applies, so `dsh-substrate-check` reports them first.
+# Installation repair remains an external `dsh-substrate repair` transaction;
+# the running plugin exposes only read-only status and conflict reports.
 - insert:
+    - id: substrate-tool-prefix-bootstrap
+      name: '@anweat/dsh-substrate/bootstrap'
     - id: substrate-report
       name: '@anweat/dsh-substrate'

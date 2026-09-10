@@ -13,6 +13,7 @@
 import { useState } from 'react'
 import type { SubstrateCardProps } from './index.js'
 import type { PatchState } from './patch-controller.js'
+import type { ConflictState } from './conflict-controller.js'
 import { css } from './styles.js'
 
 const REPAIR_STATE_COPY = {
@@ -43,6 +44,7 @@ export function SubstrateCard(props: SubstrateCardProps) {
   const { t } = props
   const state = props.useSubstrateCard(snapshot => snapshot)
   const patch = props.useSubstratePatch(snapshot => snapshot)
+  const conflicts = props.useSubstrateConflicts(snapshot => snapshot)
   const [open, setOpen] = useState(false)
   if (!state.available) return null
   const disabled = !state.writable || state.saving
@@ -94,6 +96,7 @@ export function SubstrateCard(props: SubstrateCardProps) {
               </p>
             </div>
 
+            <ConflictRow {...props} conflicts={conflicts} />
             <PatchRow {...props} patch={patch} />
 
             <div className={css.footer}>
@@ -111,6 +114,56 @@ export function SubstrateCard(props: SubstrateCardProps) {
         )
         : null}
     </li>
+  )
+}
+
+function ConflictRow(props: SubstrateCardProps & { conflicts: ConflictState }) {
+  const { t, conflicts } = props
+  if (!conflicts.loaded) return null
+  if (conflicts.error !== undefined) {
+    return <p className={css.invalid}>{fill(t('conflictsFailed'), { message: conflicts.error })}</p>
+  }
+  if (conflicts.report === undefined) return null
+  const { report } = conflicts
+  return (
+    <div className={css.field}>
+      <div className={css.head}>
+        <label className={css.label} htmlFor="dsh-substrate-conflict-mode">{t('conflictMode')}</label>
+        <span className={css.version}>{fill(t('conflictCount'), { count: String(report.items.length) })}</span>
+      </div>
+      <select
+        id="dsh-substrate-conflict-mode"
+        className={css.input}
+        value={report.mode}
+        onChange={() => {}}
+      >
+        {report.modes.map(mode => (
+          <option key={mode.id} value={mode.id} disabled={!mode.available}>
+            {mode.id === 'default-prefix'
+              ? t('modeDefault')
+              : mode.id === 'search-only' ? t('modeSearchOnly') : t('modeCollapsedSearch')}
+          </option>
+        ))}
+      </select>
+      <p className={css.hint}>{t('conflictModeHint')}</p>
+      <ul className={css.conflictList}>
+        {report.items.length === 0
+          ? <li className={css.hint}>{t('noConflicts')}</li>
+          : report.items.map(item => (
+            <li key={item.id} className={css.conflictItem}>
+              <code>{item.originalName}</code>
+              <span aria-hidden>→</span>
+              <code>{item.exposedName}</code>
+              <span className={css.conflictOwner}>{item.owner}</span>
+            </li>
+          ))}
+      </ul>
+      <ul className={css.modeNotes}>
+        {report.modes.slice(1).map(mode => (
+          <li key={mode.id}>{mode.id === 'search-only' ? t('searchOnlyUnavailable') : t('collapsedSearchUnavailable')}</li>
+        ))}
+      </ul>
+    </div>
   )
 }
 

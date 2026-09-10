@@ -33,6 +33,8 @@ const SUITES = [
   { file: '../plugin/test/patch-target.spec.mjs', layer: '插件', pins: '补丁投放的目标解析:装出来的 loader 定位到最外层工作区、源码 checkout 与找不到时一律拒绝写、写入撤销幂等' },
   { file: '../plugin/test/repair.spec.mjs', layer: '插件', pins: '安装级修复事务:声明、依赖重链、进程重启与行为验证分态,版本不匹配先于写入拒绝' },
   { file: '../plugin/test/controller.spec.mjs', layer: '插件', pins: '设置卡片表单:命名空间未被服务时不渲染、编辑保存往返、非法值不落盘、恢复默认清用户层、写入失败如实说' },
+  { file: '../plugin/test/tool-conflicts.spec.mjs', layer: '插件', pins: '工具重名:原名赢家、npm/插件前缀注入、64 字符边界、冲突清单、生命周期与 run_code 保留名' },
+  { file: '../plugin/test/conflict-surface.spec.mjs', layer: '插件', pins: '冲突列表:只读 Host RPC、标准信封、客户端加载与失败态' },
   { file: 'test/panel.spec.mjs', layer: 'L4', pins: '面板脚手架:路径从包名派生故不同包不撞、身份取自调用方 ctx、handler 与声明对齐、一个面板两笔贡献' },
 ]
 

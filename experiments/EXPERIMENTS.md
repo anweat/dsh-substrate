@@ -1,5 +1,7 @@
 # 实验工作流
 
+`verify-current-dsh-tool-prefix.ts <dsh-checkout>` 直接加载目标 checkout 的真实 Cordis、ToolRuntime 与 SystemPrompt，验证重复工具前缀注入和 fiber 卸载清理，不把 DSH 源码复制进本仓库。
+
 冷启动读这一份就够。**不要重新推导机制** —— 结论都在下面的进度表里,公开的测量在 https://github.com/anweat/dsh-ecosystem-conflicts
 
 ## 环境
